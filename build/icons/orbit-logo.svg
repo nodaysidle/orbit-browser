@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Glow filter for center -->
+    <filter id="center-glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Soft glow on rings -->
+    <filter id="ring-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Center radial gradient -->
+    <radialGradient id="dot-grad" cx="50%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#fff8e7"/>
+      <stop offset="40%" stop-color="#f5d060"/>
+      <stop offset="100%" stop-color="#c48f1a"/>
+    </radialGradient>
+    <!-- Outer halo -->
+    <radialGradient id="halo-grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#d4a72c" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#d4a72c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- ── Sphere guide circle (barely visible) ── -->
+  <circle cx="512" cy="512" r="368"
+          fill="none"
+          stroke="#d4a72c" stroke-width="1.5"
+          opacity="0.18"/>
+
+  <!-- ── Ring 1 — equatorial (back-most, dimmest) ── -->
+  <ellipse cx="512" cy="512" rx="358" ry="118"
+           fill="none"
+           stroke="#d4a72c" stroke-width="11"
+           stroke-linecap="round"
+           transform="rotate(120, 512, 512)"
+           opacity="0.55"
+           filter="url(#ring-glow)"/>
+
+  <!-- ── Ring 2 — tilted 60° ── -->
+  <ellipse cx="512" cy="512" rx="358" ry="118"
+           fill="none"
+           stroke="#d4a72c" stroke-width="13"
+           stroke-linecap="round"
+           transform="rotate(60, 512, 512)"
+           opacity="0.78"
+           filter="url(#ring-glow)"/>
+
+  <!-- ── Ring 3 — front-most (full gold) ── -->
+  <ellipse cx="512" cy="512" rx="358" ry="118"
+           fill="none"
+           stroke="#d4a72c" stroke-width="16"
+           stroke-linecap="round"
+           transform="rotate(0, 512, 512)"
+           opacity="1.0"
+           filter="url(#ring-glow)"/>
+
+  <!-- ── Center halo glow ── -->
+  <circle cx="512" cy="512" r="72"
+          fill="url(#halo-grad)"/>
+
+  <!-- ── Center node ── -->
+  <circle cx="512" cy="512" r="22"
+          fill="url(#dot-grad)"
+          filter="url(#center-glow)"/>
+
+  <!-- ── Small axis nodes where rings intersect vertical axis ── -->
+  <circle cx="512" cy="394" r="7" fill="#f5d060" opacity="0.7"/>
+  <circle cx="512" cy="630" r="7" fill="#f5d060" opacity="0.7"/>
+</svg>

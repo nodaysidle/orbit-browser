@@ -1,0 +1,16 @@
+node_modules/
+out/
+dist/
+release/
+*.log
+.DS_Store
+.env
+.env.local
+coverage/
+*.tsbuildinfo
+.vscode/
+.idea/
+src-tauri/target/
+src-tauri/gen/
+.opencode/
+.claude/
