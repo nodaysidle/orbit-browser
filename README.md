@@ -5,10 +5,10 @@
 **A minimal, fast browser built with Tauri 2 + Rust.**
 Native webviews. No Electron. No telemetry. No noise.
 
-[![Platform](https://img.shields.io/badge/platform-macOS-333?style=flat-square&logo=apple)](https://gitlab.com/NODAYSIDLE/orbit-browser)
-[![Tauri](https://img.shields.io/badge/tauri-2-24c8db?style=flat-square&logo=tauri)](https://tauri.app)
-[![Rust](https://img.shields.io/badge/rust-1.75-f74c00?style=flat-square&logo=rust)](https://rust-lang.org)
-[![License](https://img.shields.io/badge/license-MIT-d4a72c?style=flat-square)](./LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS-black?style=flat-square&logo=apple)](https://gitlab.com/NODAYSIDLE/orbit-browser)
+[![Tauri](https://img.shields.io/badge/tauri-v2-blue?style=flat-square&logo=tauri)](https://tauri.app)
+[![Rust](https://img.shields.io/badge/rust-stable-orange?style=flat-square&logo=rust)](https://rust-lang.org)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
 </div>
 
