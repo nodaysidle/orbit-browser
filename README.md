@@ -1,153 +1,174 @@
-<div align="center">
-
 # Orbit
 
-**A minimal, fast browser built with Tauri 2 + Rust.**
-Native webviews. No Electron. No telemetry. No noise.
+**A focused macOS browser — native tabs, local-first, dark by default.**
 
-[![Platform](https://img.shields.io/badge/platform-macOS-black?style=flat-square&logo=apple)](https://gitlab.com/NODAYSIDLE/orbit-browser)
-[![Tauri](https://img.shields.io/badge/tauri-v2-blue?style=flat-square&logo=tauri)](https://tauri.app)
-[![Rust](https://img.shields.io/badge/rust-stable-orange?style=flat-square&logo=rust)](https://rust-lang.org)
-[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+Minimal chrome, full web. WKWebView child webviews on Tauri 2. No Electron, no telemetry, no noise.
 
-</div>
+<p>
+  <img src="https://img.shields.io/badge/platform-macOS-black?style=flat-square&logo=apple" alt="macOS">
+  <img src="https://img.shields.io/badge/tauri-2.10-f0b35f?style=flat-square&logo=tauri" alt="Tauri 2.10">
+  <img src="https://img.shields.io/badge/rust-stable-8b7355?style=flat-square&logo=rust" alt="Rust">
+  <img src="https://img.shields.io/badge/license-MIT-7b8cac?style=flat-square" alt="MIT">
+</p>
 
 ---
 
-## Why
+## About
 
-Most browsers are bloated. Orbit is not.
+Orbit is a native macOS browser built for people who want the web without the overhead. No Chrome bloat, no Electron memory tax, no analytics pinging home.
 
-- **Native WKWebView per tab** — no iframe restrictions, no X-Frame-Options blocks, full site compatibility
-- **Sessions persist** — log into Google once, it stays logged in (WKWebView persistent store)
-- **No telemetry** — not even Google Fonts on first load (all fonts are self-hosted)
-- **Ad blocking** — domain matching in Rust before any network request leaves the machine
-- **Your data stays local** — bookmarks and history in a SQLite file on your machine, nowhere else
+| Layer | Stack |
+|-------|-------|
+| Shell | Tauri 2.10 |
+| Engine | WKWebView (native child webviews) |
+| Backend | Rust 2021 |
+| Frontend | Vanilla JS + Vite |
+| Storage | SQLite via rusqlite |
 
 ---
 
 ## Features
 
-| | |
-|---|---|
-| **Native tabs** | One WKWebView child per tab — any site, no restrictions |
-| **Ad blocking** | O(1) domain + subdomain matching in Rust via `on_navigation` hook |
-| **Bookmarks** | Save, browse, and delete from the nav bar |
-| **History** | Full browsing history with live debounced search |
-| **Session persistence** | Cookies, localStorage, IndexedDB survive restarts automatically |
-| **New tab page** | `nodaysidle` wordmark + 4 shortcuts with hover tooltips |
-| **Self-hosted fonts** | Space Grotesk (UI) + JetBrains Mono (wordmark) — zero CDN requests |
-| **Keyboard shortcuts** | Full set — see table below |
+- **Native tabs** — each tab gets its own WKWebView, managed by Rust. No multi-process overhead.
+- **Local-first data** — bookmarks, history, settings stay in a bundled SQLite DB. Your data, your machine.
+- **Domain blocking** — built-in blocklist at `resources/adblock-patterns.json`
+- **Keyboard-first** — full shortcut set for tabs, navigation, find-in-page
+- **Dark by default** — amber-accented dark theme, with light mode as secondary option
+- **Locked-down CSP** — script-src is tight in Tauri config
 
 ---
 
 ## Install
 
-### macOS — from source
+### Requirements
+
+- macOS 14+
+- Node.js 20+
+- Rust stable toolchain (`rustup`)
+
+### From source
 
 ```bash
-git clone https://gitlab.com/NODAYSIDLE/orbit-browser.git
+git clone git@gitlab.com:NODAYSIDLE/orbit-browser.git
 cd orbit-browser
-npm install
+npm ci
 npm run tauri build
-cp -R src-tauri/target/release/bundle/macos/Orbit.app /Applications/
 ```
 
-### Dev mode
+The `.app` lands at `src-tauri/target/release/bundle/macos/Orbit.app`.
+
+### Quick install
 
 ```bash
-npm install
+npm run tauri build && \
+ditto src-tauri/target/release/bundle/macos/Orbit.app /Applications/Orbit.app
+```
+
+Or use the helper:
+
+```bash
+bash scripts/build-mac.sh   # builds the app
+bash scripts/install-app.sh # copies to /Applications
+```
+
+---
+
+## Development
+
+```bash
+npm ci
 npm run tauri dev
 ```
 
----
+Frontend-only hot-reload:
 
-## Keyboard shortcuts
+```bash
+npm run dev
+```
 
-| Shortcut | Action |
-|:---------|:-------|
-| `⌘T` | New tab |
-| `⌘W` | Close tab |
-| `⌘L` | Focus address bar |
-| `⌘R` | Reload |
-| `⌘[` | Go back |
-| `⌘]` | Go forward |
-| `⌘1`–`⌘9` | Switch to tab N |
+Opens at `http://localhost:1420` — API calls won't work outside Tauri.
 
 ---
 
-## Architecture
+## Quality
+
+```bash
+npm run check
+```
+
+Runs:
+
+1. JS unit tests (`node --test`)
+2. Production Vite build
+3. Rust format check, clippy, and tests
+
+---
+
+## Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Cmd+T` | New tab |
+| `Cmd+W` | Close tab |
+| `Cmd+L` | Focus address bar |
+| `Cmd+R` | Reload |
+| `Cmd+.` | Stop |
+| `Cmd+[` / `Cmd+]` | Back / Forward |
+| `Cmd+Shift+[` / `Cmd+Shift+]` | Previous / Next tab |
+| `Cmd+1` … `Cmd+9` | Switch to tab by index |
+| `Cmd+F` | Find in page |
+
+---
+
+## Project
 
 ```
 orbit-browser/
-├── src-tauri/src/
-│   ├── main.rs        — app setup, all Tauri commands, webview lifecycle
-│   ├── browser.rs     — TabInfo, TabData, BrowserState, URL normalization
-│   ├── db.rs          — SQLite schema, bookmarks, history, settings
-│   └── adblock.rs     — domain blocklist loader, O(1) HashSet matching
-│
+├── index.html              # Browser chrome layout
 ├── src/
-│   ├── index.html     — chrome shell (titlebar, tab bar, nav bar, new tab page)
-│   ├── styles.css     — full design system (graphite palette, Space Grotesk)
-│   ├── main.js        — frontend logic (invoke/listen via @tauri-apps/api)
-│   └── fonts/         — SpaceGrotesk + JetBrainsMono woff2 (self-hosted)
-│
+│   ├── main.js             # State, commands, tab manager
+│   ├── events.js           # DOM event bindings
+│   ├── styles.css          # CSS entrypoint
+│   ├── styles/
+│   │   ├── base.css        # Variables, reset, global
+│   │   ├── chrome.css      # Titlebar, tabs, nav bar
+│   │   ├── home.css        # New-tab page
+│   │   └── panels.css      # Dropdowns, history, bookmarks
+│   └── utils/
+│       ├── ui.js           # Theme, URL helpers
+│       ├── render.js       # DOM rendering
+│       └── dom.js          # Element/icon factory
+├── src-tauri/
+│   ├── src/
+│   │   ├── main.rs         # App setup, commands
+│   │   ├── browser.rs      # Tab state, navigation
+│   │   ├── tabs.rs         # Webview lifecycle
+│   │   ├── db.rs           # SQLite persistence
+│   │   ├── adblock.rs      # Domain blocking
+│   │   ├── download.rs     # File downloads
+│   │   └── layout.rs       # Webview positioning
+│   └── tauri.conf.json
 └── resources/
-    └── adblock-patterns.json   — blocked domains list
+    └── adblock-patterns.json
 ```
 
-### How tabs work
+---
 
-Each tab is a native `Webview` child added to the main window via `Window::add_child()` at `y=108px` (below the 108px chrome). Only the active tab is visible — others are hidden with `wv.hide()`. On window resize, the active webview bounds are updated in real time.
+## Data & Privacy
 
-New blank tabs have no webview until the first navigation (lazy creation).
-
-### How ad blocking works
-
-On each navigation request, `WebviewBuilder::on_navigation` fires in Rust before any network call. The blocked domain set (`Arc<HashSet<String>>`) is checked for exact match and subdomain suffix match. Returning `false` drops the request at the OS level — nothing leaves the machine.
+- **Database:** `~/Library/Application Support/com.orbit.browser/orbit.db`
+- **No telemetry.** No analytics. No background pings.
+- **Search:** unrecognized input sends queries to DuckDuckGo. No logging.
+- **Blocklist:** local file, no remote fetch.
 
 ---
 
-## Privacy
+## Brand
 
-| What | Where |
-|:-----|:------|
-| Bookmarks | `~/Library/Application Support/com.orbit.browser/orbit.db` |
-| History | Same SQLite file |
-| Fonts | Bundled in the app — zero network requests for typography |
-| Search queries | Sent to DuckDuckGo (their privacy policy applies) |
-| Telemetry | None |
-| Analytics | None |
+App icon and assets under `src-tauri/icons/`. Source logo at `build/icons/orbit-logo.svg`.
+
+Built by **[NODAYSIDLE](https://gitlab.com/NODAYSIDLE)** — 9.7/10 bar, every time.
 
 ---
 
-## Stack
-
-| | |
-|---|---|
-| **Backend** | Rust + Tauri 2 |
-| **Webviews** | WKWebView (native macOS) via Tauri unstable child webview API |
-| **Database** | rusqlite (bundled SQLite, no system dependency) |
-| **Frontend** | Vanilla JS + `@tauri-apps/api` |
-| **Fonts** | Space Grotesk (UI), JetBrains Mono (wordmark) |
-| **Build** | Vite (frontend) + cargo (Rust) |
-
----
-
-## Customise ad block rules
-
-Edit `resources/adblock-patterns.json`:
-
-```json
-{
-  "domains": ["example-tracker.com", "ads.example.net"]
-}
-```
-
-Rebuild to apply changes. The file is bundled into the `.app` at build time.
-
----
-
-<div align="center">
-  <sub>Built by <a href="https://gitlab.com/NODAYSIDLE">NODAYSIDLE</a></sub>
-</div>
+*License: MIT*
