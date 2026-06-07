@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="ring" x1="18%" y1="20%" x2="82%" y2="80%">
+      <stop offset="0%" stop-color="#7B8CAC" stop-opacity="0.92"/>
+      <stop offset="52%" stop-color="#D4CFC4" stop-opacity="0.86"/>
+      <stop offset="100%" stop-color="#8B7355" stop-opacity="0.92"/>
+    </linearGradient>
+
+    <filter id="ringGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+                0 0 0 0.55 0" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <circle cx="512" cy="512" r="286" stroke="url(#ring)" stroke-width="124" fill="none" filter="url(#ringGlow)"/>
+  <circle cx="512" cy="512" r="240" stroke="rgba(212, 207, 196, 0.10)" stroke-width="2" fill="none"/>
+
+  <g transform="rotate(-18 512 512)">
+    <ellipse cx="512" cy="512" rx="380" ry="132" fill="none" stroke="rgba(123, 140, 172, 0.30)" stroke-width="12"/>
+    <path d="M162 512c78-62 178-98 350-98s272 36 350 98" fill="none" stroke="#C8FF00" stroke-opacity="0.75" stroke-width="14" stroke-linecap="round"/>
+    <circle cx="854" cy="510" r="22" fill="#C8FF00"/>
+    <circle cx="854" cy="510" r="54" fill="#C8FF00" fill-opacity="0.14"/>
+  </g>
+</svg>

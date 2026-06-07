@@ -1,0 +1,22 @@
+{
+  "name": "orbit-browser",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/unit/*.test.js",
+    "check:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo test --manifest-path src-tauri/Cargo.toml && cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings",
+    "check": "npm test && npm run build && npm run check:rust",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.10.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.10.1",
+    "vite": "^8.0.14"
+  }
+}

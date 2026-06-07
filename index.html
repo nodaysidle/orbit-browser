@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#141017" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#f4eee2" media="(prefers-color-scheme: light)" />
+  <title>Orbit</title>
+  <link rel="stylesheet" href="src/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="titlebar" data-tauri-drag-region>
+      <div class="traffic-lights">
+        <button id="btnClose" class="traffic close" aria-label="Close window"></button>
+        <button id="btnMinimize" class="traffic minimize" aria-label="Minimize window"></button>
+        <button id="btnMaximize" class="traffic maximize" aria-label="Maximize window"></button>
+      </div>
+      <div class="brand-lockup" data-tauri-drag-region>
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Orbit</span>
+      </div>
+      <div class="tab-count" id="tabCount">0 tabs</div>
+    </header>
+
+    <section class="tab-bar" aria-label="Tabs">
+      <div class="tabs-scroll" id="tabsContainer"></div>
+      <button class="new-tab-btn" id="btnNewTab" aria-label="New tab" type="button">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </section>
+
+    <nav class="nav-bar" aria-label="Browser controls">
+      <div class="nav-left">
+        <button id="btnHome" class="nav-btn" aria-label="Home" title="Home (Shift+H)" type="button">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M4 9.5 10 5l6 4.5V16a1 1 0 0 1-1 1h-3.5v-4.5h-3V17H5a1 1 0 0 1-1-1V9.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button id="btnBack" class="nav-btn" aria-label="Back" title="Back (Cmd+[)" disabled type="button">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M10 14 6 10l4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button id="btnForward" class="nav-btn" aria-label="Forward" title="Forward (Cmd+])" disabled type="button">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="m8 6 4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button id="btnReload" class="nav-btn" aria-label="Reload" title="Reload (Cmd+R)" type="button">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M15 6v4h-4M5 14v-4h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M14.5 10A5 5 0 0 0 6 6.5L5 8m.5 2A5 5 0 0 0 14 13.5l1-1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button id="btnStop" class="nav-btn" aria-label="Stop loading" disabled type="button">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <rect x="6" y="6" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.7"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="address-wrap" id="addressWrap">
+        <div class="address-status" id="lockIcon" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+            <rect x="5" y="9" width="10" height="7" rx="2" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M7 9V7a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <span class="address-scheme" id="addressScheme"></span>
+        </div>
+        <input id="addressInput" type="text" autocomplete="off" spellcheck="false" placeholder="Search or enter address" aria-label="Search or enter address" />
+        <button id="btnCopyAddress" class="address-copy-btn" type="button" aria-label="Copy address" title="Copy address">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <rect x="6" y="6" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M4 14V5a1 1 0 0 1 1-1h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="nav-right">
+        <button id="btnTheme" class="nav-btn" aria-label="Switch to light mode" type="button"></button>
+        <button id="btnBookmark" class="nav-btn" aria-label="Bookmark" type="button">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M6 4h8a1 1 0 0 1 1 1v11l-5-3-5 3V5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button id="btnMenu" class="nav-btn" aria-label="Menu" aria-controls="menuDropdown" aria-expanded="false" type="button">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="10" cy="5" r="1.1" fill="currentColor"/>
+            <circle cx="10" cy="10" r="1.1" fill="currentColor"/>
+            <circle cx="10" cy="15" r="1.1" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </nav>
+
+    <div class="chrome-progress" id="chromeProgress" aria-hidden="true"></div>
+
+    <main class="new-tab-page" id="newTabPage">
+      <div class="home-shell" id="homeContent">
+        <div class="home-orbit" aria-hidden="true">
+          <span class="ring ring-one"></span>
+          <span class="ring ring-two"></span>
+          <span class="ring ring-three"></span>
+          <span class="orbit-core">O</span>
+        </div>
+        <h1 class="home-title">Orbit</h1>
+        <form class="home-search" id="newTabSearchForm">
+          <div class="home-search-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+              <path d="m14 14 3 3M15 9.5A5.5 5.5 0 1 1 4 9.5a5.5 5.5 0 0 1 11 0Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <input id="newTabSearchInput" type="text" autocomplete="off" spellcheck="false" placeholder="Search or enter address" aria-label="Search or enter address" />
+        </form>
+        <div class="shortcuts-row" id="shortcutsRow" aria-label="Shortcuts"></div>
+        <section class="recent-section" aria-label="Recent pages">
+          <div class="recent-header">
+            <span>Recent</span>
+          </div>
+          <div class="recent-grid" id="recentPages"></div>
+        </section>
+      </div>
+      <div class="error-page hidden" id="errorPage" role="status" aria-live="polite">
+        <div class="error-mark" aria-hidden="true">!</div>
+        <h1 id="errorTitle">Orbit could not open this page</h1>
+        <p id="errorMessage">The navigation failed before a page could load.</p>
+        <code id="errorUrl"></code>
+        <div class="error-actions">
+          <button class="primary-action" id="errorRetry" type="button">Try Again</button>
+          <button class="secondary-action" id="errorHome" type="button">New Tab</button>
+        </div>
+      </div>
+    </main>
+
+    <div class="dropdown hidden" id="menuDropdown" role="menu" aria-label="Browser menu">
+      <button class="dropdown-item" id="menuHistory" role="menuitem" tabindex="-1" type="button">History</button>
+      <button class="dropdown-item" id="menuBookmarks" role="menuitem" tabindex="-1" type="button">Bookmarks</button>
+      <button class="dropdown-item" id="menuSettings" role="menuitem" tabindex="-1" type="button">Settings…</button>
+      <button class="dropdown-item danger" id="menuClearHistory" role="menuitem" tabindex="-1" type="button">Clear History</button>
+    </div>
+
+    <section class="dropdown panel hidden" id="historyPanel" aria-label="History">
+      <div class="panel-header">
+        <span>History</span>
+        <button class="panel-close" id="closeHistory" aria-label="Close history" type="button"></button>
+      </div>
+      <input class="panel-search" id="historySearch" aria-label="Search history" autocomplete="off" />
+      <div class="panel-list" id="historyList"></div>
+    </section>
+
+    <section class="dropdown panel hidden" id="bookmarksPanel" aria-label="Bookmarks">
+      <div class="panel-header">
+        <span>Bookmarks</span>
+        <button class="panel-close" id="closeBookmarks" aria-label="Close bookmarks" type="button"></button>
+      </div>
+      <div class="panel-list" id="bookmarksList"></div>
+    </section>
+
+    <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+
+    <div class="find-bar hidden" id="findBar">
+      <input id="findInput" type="text" placeholder="Find in page…" autocomplete="off" aria-label="Find in page" />
+      <button class="find-btn" id="findPrev" aria-label="Previous match" type="button"></button>
+      <button class="find-btn" id="findNext" aria-label="Next match" type="button"></button>
+      <button class="find-close" id="findClose" aria-label="Close find" type="button"></button>
+    </div>
+
+    <div class="modal-backdrop hidden" id="aboutModal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+      <section class="about-panel">
+        <div class="about-mark" aria-hidden="true">O</div>
+        <div class="about-copy">
+          <h2 id="aboutTitle">Orbit</h2>
+          <p id="aboutVersion">Version 1.0.0</p>
+        </div>
+        <button class="about-close" id="aboutClose" type="button" aria-label="Close About Orbit">Close</button>
+      </section>
+    </div>
+
+    <div class="modal-backdrop hidden" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <section class="settings-panel">
+        <div class="settings-header">
+          <div>
+            <h2 id="settingsTitle">Settings</h2>
+            <p>Browser preferences stay local on this Mac.</p>
+          </div>
+          <button class="panel-close" id="settingsClose" aria-label="Close settings" type="button"></button>
+        </div>
+        <div class="settings-grid">
+          <label class="settings-field">
+            <span>Theme</span>
+            <select id="settingTheme">
+              <option value="auto">System</option>
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+          <label class="settings-field">
+            <span>Search Engine</span>
+            <select id="settingSearchEngine">
+              <option value="duckduckgo">DuckDuckGo</option>
+              <option value="google">Google</option>
+              <option value="brave">Brave Search</option>
+            </select>
+          </label>
+          <label class="settings-field">
+            <span>Startup</span>
+            <select id="settingStartup">
+              <option value="restore">Restore tabs</option>
+              <option value="new_tab">Open new tab</option>
+            </select>
+          </label>
+        </div>
+        <div class="settings-shortcuts">
+          <div class="settings-section-title">Shortcuts</div>
+          <div class="shortcut-editor" id="shortcutEditor"></div>
+          <button class="primary-action" id="saveShortcuts" type="button">Save Shortcuts</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
