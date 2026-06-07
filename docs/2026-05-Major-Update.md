@@ -13,7 +13,7 @@ A complete, independent code review and audit of the Orbit codebase was performe
 The approved design document lives at:
 `docs/design/2026-05-29-orbit-ui-ux-polish-approved.md`
 
-All implementation work strictly followed the constraints documented in `AGENTS.md`:
+All implementation work strictly followed the constraints documented in `docs/internal/AGENTS.md`:
 - Vanilla JavaScript only (no frameworks)
 - Exact frontend module structure preserved (`src/main.js` → `events.js` → `utils/{render,ui,dom}.js`)
 - No new Rust dependencies
