@@ -7,6 +7,8 @@ use crate::db::Db;
 use crate::download::is_download_url;
 use crate::layout::{live_webview_bounds, sync_visible_webviews};
 
+use std::collections::HashMap;
+
 use tauri::webview::{NewWindowResponse, WebviewBuilder};
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, Window};
 
@@ -174,6 +176,7 @@ pub async fn create_tab(
     if !is_blank {
         if let Err(err) = create_webview_for_tab(&app, &state, &id, &clean_url, make_active).await {
             lock_state(&state.tabs, "tabs")?.remove(&id);
+            lock_state(&state.tab_order, "tab_order")?.retain(|tab_id| tab_id != &id);
             if make_active {
                 *lock_state(&state.active_tab, "active_tab")? = previous_active;
                 if let Some(active_id) = lock_state(&state.active_tab, "active_tab")?.clone() {
@@ -460,12 +463,13 @@ pub async fn close_tab(
     }
 
     let next_id = {
-        let order = lock_state(&state.tab_order, "tab_order")?;
-        next_active_after_close(&order, &tab_id)
+        let mut tabs = lock_state(&state.tabs, "tabs")?;
+        let mut order = lock_state(&state.tab_order, "tab_order")?;
+        let next_id = next_active_after_close(&order, &tab_id);
+        tabs.remove(&tab_id);
+        order.retain(|id| id != &tab_id);
+        next_id
     };
-
-    lock_state(&state.tabs, "tabs")?.remove(&tab_id);
-    lock_state(&state.tab_order, "tab_order")?.retain(|id| id != &tab_id);
 
     let active_id = {
         let mut active = lock_state(&state.active_tab, "active_tab")?;
@@ -743,6 +747,31 @@ pub fn get_active_tab(state: tauri::State<'_, BrowserState>) -> Result<Option<St
     Ok(lock_state(&state.active_tab, "active_tab")?.clone())
 }
 
+#[tauri::command]
+pub fn reorder_tabs(
+    app: AppHandle,
+    state: tauri::State<'_, BrowserState>,
+    ordered_ids: Vec<String>,
+) -> Result<(), String> {
+    {
+        let tabs = lock_state(&state.tabs, "tabs")?;
+        validate_tab_order(&tabs, &ordered_ids)?;
+    }
+    *lock_state(&state.tab_order, "tab_order")? = ordered_ids;
+    save_current_session(&app, state.inner());
+    Ok(())
+}
+
+fn validate_tab_order(
+    tabs: &HashMap<String, TabData>,
+    ordered_ids: &[String],
+) -> Result<(), String> {
+    if ordered_ids.len() != tabs.len() || ordered_ids.iter().any(|id| !tabs.contains_key(id)) {
+        return Err("invalid tab order".to_string());
+    }
+    Ok(())
+}
+
 // ── Favicon ────────────────────────────────────────────────────────────────────
 
 /// Construct a best-effort favicon URL from the page URL.
@@ -852,6 +881,17 @@ mod tests {
         assert!(is_allowed_navigation_scheme("HTTP"));
         assert!(!is_allowed_navigation_scheme("file"));
         assert!(!is_allowed_navigation_scheme("javascript"));
+    }
+
+    #[test]
+    fn test_validate_tab_order_rejects_ghost_entries() {
+        let mut tabs = HashMap::new();
+        tabs.insert("a".into(), test_tab_data("a", "https://a.example"));
+        tabs.insert("b".into(), test_tab_data("b", "https://b.example"));
+
+        assert!(validate_tab_order(&tabs, &["b".into(), "a".into()]).is_ok());
+        assert!(validate_tab_order(&tabs, &["b".into(), "ghost".into()]).is_err());
+        assert!(validate_tab_order(&tabs, &["b".into()]).is_err());
     }
 
     #[test]

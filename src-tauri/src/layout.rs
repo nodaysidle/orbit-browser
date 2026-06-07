@@ -86,14 +86,18 @@ pub fn sync_visible_webviews(
     active_id: &str,
 ) -> Result<(), String> {
     let bounds = active_webview_bounds(app, state);
-    let tab_ids: Vec<String> = lock_state(&state.tabs, "tabs")?.keys().cloned().collect();
-    let active_has_page = lock_state(&state.tabs, "tabs")?
-        .get(active_id)
-        .map(|tab| {
-            let url = tab.info.url.to_ascii_lowercase();
-            url.starts_with("http://") || url.starts_with("https://")
-        })
-        .unwrap_or(false);
+    let (tab_ids, active_has_page) = {
+        let tabs = lock_state(&state.tabs, "tabs")?;
+        let tab_ids: Vec<String> = tabs.keys().cloned().collect();
+        let active_has_page = tabs
+            .get(active_id)
+            .map(|tab| {
+                let url = tab.info.url.to_ascii_lowercase();
+                url.starts_with("http://") || url.starts_with("https://")
+            })
+            .unwrap_or(false);
+        (tab_ids, active_has_page)
+    };
 
     for id in tab_ids {
         if let Some(wv) = app.get_webview(&id) {

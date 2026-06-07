@@ -14,7 +14,8 @@ use download::download_file;
 use layout::{resize_active_webview, resize_active_webview_to, MAX_OVERLAY_HEIGHT};
 use tabs::{
     close_tab, create_tab, eval_on_tab, find_in_page, get_active_tab, get_tabs, go_back,
-    go_forward, go_home_tab, navigate_tab, reload_tab, reset_zoom, stop_tab, switch_tab, zoom_tab,
+    go_forward, go_home_tab, navigate_tab, reload_tab, reorder_tabs, reset_zoom, stop_tab,
+    switch_tab, zoom_tab,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{Emitter, Manager};
@@ -388,48 +389,54 @@ fn main() {
             // Restore previous session
             {
                 let db = app.state::<Db>();
-                if let Ok((urls, active_index)) = db.load_session() {
-                    let mut restored_ids = Vec::new();
-                    for url in urls {
-                        let id = format!("t{}", &uuid::Uuid::new_v4().simple().to_string()[..10]);
-                        let history = if url.is_empty() {
-                            Vec::new()
-                        } else {
-                            vec![url.clone()]
-                        };
-                        let info = TabInfo {
-                            id: id.clone(),
-                            url: url.clone(),
-                            title: if url.is_empty() {
-                                "New Tab".to_string()
+                match db.load_session() {
+                    Ok((urls, active_index)) => {
+                        let mut restored_ids = Vec::new();
+                        for url in urls {
+                            let id =
+                                format!("t{}", &uuid::Uuid::new_v4().simple().to_string()[..10]);
+                            let history = if url.is_empty() {
+                                Vec::new()
                             } else {
-                                browser::title_from_url(&url)
-                            },
-                            loading: false,
-                            can_go_back: false,
-                            can_go_forward: false,
-                        };
+                                vec![url.clone()]
+                            };
+                            let info = TabInfo {
+                                id: id.clone(),
+                                url: url.clone(),
+                                title: if url.is_empty() {
+                                    "New Tab".to_string()
+                                } else {
+                                    browser::title_from_url(&url)
+                                },
+                                loading: false,
+                                can_go_back: false,
+                                can_go_forward: false,
+                            };
+                            let browser_state = app.state::<BrowserState>();
+                            lock_state(&browser_state.tabs, "tabs")?.insert(
+                                id.clone(),
+                                TabData {
+                                    info,
+                                    history,
+                                    history_idx: 0,
+                                    has_webview: false,
+                                    pending_history_idx: None,
+                                    popup_block_url: None,
+                                },
+                            );
+                            restored_ids.push(id);
+                        }
                         let browser_state = app.state::<BrowserState>();
-                        lock_state(&browser_state.tabs, "tabs")?.insert(
-                            id.clone(),
-                            TabData {
-                                info,
-                                history,
-                                history_idx: 0,
-                                has_webview: false,
-                                pending_history_idx: None,
-                                popup_block_url: None,
-                            },
-                        );
-                        restored_ids.push(id);
+                        *lock_state(&browser_state.tab_order, "tab_order")? = restored_ids.clone();
+                        if let Some(id) = active_index
+                            .and_then(|idx| restored_ids.get(idx).cloned())
+                            .or_else(|| restored_ids.first().cloned())
+                        {
+                            *lock_state(&browser_state.active_tab, "active_tab")? = Some(id);
+                        }
                     }
-                    let browser_state = app.state::<BrowserState>();
-                    *lock_state(&browser_state.tab_order, "tab_order")? = restored_ids.clone();
-                    if let Some(id) = active_index
-                        .and_then(|idx| restored_ids.get(idx).cloned())
-                        .or_else(|| restored_ids.first().cloned())
-                    {
-                        *lock_state(&browser_state.active_tab, "active_tab")? = Some(id);
+                    Err(err) => {
+                        report_error(format_args!("failed to restore session: {err}"));
                     }
                 }
             }
@@ -475,6 +482,7 @@ fn main() {
             go_home_tab,
             get_tabs,
             get_active_tab,
+            reorder_tabs,
             find_in_page,
             zoom_tab,
             reset_zoom,

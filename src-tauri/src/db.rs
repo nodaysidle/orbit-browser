@@ -8,6 +8,8 @@ pub struct Db {
     pub conn: Mutex<Connection>,
 }
 
+const CURRENT_SCHEMA_VERSION: i64 = 1;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Bookmark {
     pub id: String,
@@ -51,6 +53,37 @@ impl Db {
 
     fn init_schema(&self) -> Result<()> {
         let conn = self.lock_conn()?;
+        conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+        conn.execute_batch(
+            "
+            CREATE TABLE IF NOT EXISTS schema_version (
+                version     INTEGER PRIMARY KEY,
+                applied_at  INTEGER NOT NULL
+            );
+        ",
+        )?;
+
+        let current_version: i64 = conn
+            .query_row("SELECT MAX(version) FROM schema_version", [], |row| {
+                row.get::<_, Option<i64>>(0)
+            })?
+            .unwrap_or(0);
+
+        if current_version < 1 {
+            Self::apply_schema_v1(&conn)?;
+        }
+
+        if current_version < CURRENT_SCHEMA_VERSION {
+            conn.execute(
+                "INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?1, ?2)",
+                params![CURRENT_SCHEMA_VERSION, unix_timestamp()],
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn apply_schema_v1(conn: &Connection) -> Result<()> {
         conn.execute_batch(
             "
             CREATE TABLE IF NOT EXISTS bookmarks (
@@ -318,6 +351,58 @@ mod tests {
 
     fn test_db() -> Db {
         Db::open_in_memory().unwrap()
+    }
+
+    #[test]
+    fn test_schema_version_is_initialized() {
+        let db = test_db();
+        let conn = db.lock_conn().unwrap();
+        let version: i64 = conn
+            .query_row("SELECT MAX(version) FROM schema_version", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(version, CURRENT_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn test_unversioned_existing_database_migrates() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "
+            CREATE TABLE bookmarks (
+                id TEXT PRIMARY KEY,
+                url TEXT NOT NULL UNIQUE,
+                title TEXT NOT NULL,
+                favicon TEXT,
+                created_at INTEGER NOT NULL
+            );
+            CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            INSERT INTO settings (key, value) VALUES ('session_tabs', '[]');
+        ",
+        )
+        .unwrap();
+        let db = Db {
+            conn: Mutex::new(conn),
+        };
+
+        db.init_schema().unwrap();
+
+        let conn = db.lock_conn().unwrap();
+        let version: i64 = conn
+            .query_row("SELECT MAX(version) FROM schema_version", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        let session_tabs: String = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = 'session_tabs'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(version, CURRENT_SCHEMA_VERSION);
+        assert_eq!(session_tabs, "[]");
     }
 
     #[test]

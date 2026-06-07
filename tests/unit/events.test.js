@@ -75,6 +75,8 @@ function actions(overrides = {}) {
     },
     retryErrorPage: () => calls.push('retry-error'),
     errorPageHome: () => calls.push('error-home'),
+    deleteShortcutAt: id => calls.push(`delete-shortcut:${id}`),
+    persistTabOrder: ids => calls.push(`persist-tabs:${ids.join(',')}`),
     goHome: () => calls.push('home'),
     goBack: () => calls.push('back'),
     goForward: () => calls.push('forward'),
@@ -109,6 +111,21 @@ test('bindEvents delegates dynamic shortcut and recent page clicks', () => {
   nodes.recentPages.dispatchEvent({ type: 'click', target: recent })
 
   assert.deepEqual(bound.calls.slice(-2), ['navigate:https://example.com', 'navigate:https://rust-lang.org'])
+})
+
+test('bindEvents persists tab drag order through actions', () => {
+  const { document, nodes } = setup()
+  const bound = actions()
+  const tabA = document.createElement('button')
+  tabA.dataset.tabId = 'a'
+  const tabB = document.createElement('button')
+  tabB.dataset.tabId = 'b'
+  nodes.tabsContainer.append(tabB, tabA)
+
+  bindEvents(bound)
+  nodes.tabsContainer.dispatchEvent({ type: 'dragend' })
+
+  assert.equal(bound.calls.at(-1), 'persist-tabs:b,a')
 })
 
 test('bindEvents persists settings changes through actions', () => {
