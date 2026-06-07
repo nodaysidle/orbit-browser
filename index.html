@@ -24,7 +24,7 @@
     </header>
 
     <section class="tab-bar" aria-label="Tabs">
-      <div class="tabs-scroll" id="tabsContainer"></div>
+      <div class="tabs-scroll" id="tabsContainer" role="tablist" aria-label="Open tabs"></div>
       <button class="new-tab-btn" id="btnNewTab" aria-label="New tab" type="button">
         <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
@@ -98,7 +98,7 @@
 
     <div class="chrome-progress" id="chromeProgress" aria-hidden="true"></div>
 
-    <main class="new-tab-page" id="newTabPage">
+    <main class="new-tab-page" id="newTabPage" role="tabpanel" aria-label="Browser page">
       <div class="home-shell" id="homeContent">
         <div class="home-orbit" aria-hidden="true">
           <span class="ring ring-one"></span>

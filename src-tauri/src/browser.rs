@@ -42,9 +42,15 @@ impl BrowserState {
 }
 
 pub fn lock_state<'a, T>(mutex: &'a Mutex<T>, name: &str) -> Result<MutexGuard<'a, T>, String> {
-    mutex.lock().map_err(|_| {
-        format!("browser state lock '{name}' is poisoned; previous operation may have failed")
-    })
+    match mutex.lock() {
+        Ok(guard) => Ok(guard),
+        Err(poisoned) => {
+            report_error(format_args!(
+                "browser state lock '{name}' was poisoned; recovering inner state"
+            ));
+            Ok(poisoned.into_inner())
+        }
+    }
 }
 
 pub fn report_error(message: impl Display) {
@@ -241,6 +247,20 @@ pub fn title_from_url(url: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    #[test]
+    fn test_lock_state_recovers_poisoned_mutex() {
+        let mutex = Mutex::new(7_i32);
+        let _ = std::panic::catch_unwind(|| {
+            let mut guard = mutex.lock().unwrap();
+            *guard = 11;
+            panic!("poison test");
+        });
+
+        let guard = lock_state(&mutex, "poison_test").unwrap();
+        assert_eq!(*guard, 11);
+    }
 
     #[test]
     fn test_normalize_full_https_passthrough() {

@@ -123,6 +123,13 @@ function absorb(promise, fallbackMessage = 'Action failed') {
   })
 }
 
+function installUnhandledRejectionHandler() {
+  window.addEventListener('unhandledrejection', event => {
+    logError('Unhandled promise rejection', event.reason)
+    showToast(formatError(event.reason, 'Unexpected Orbit error'))
+  })
+}
+
 async function command(name, payload = {}, fallbackMessage = 'Action failed') {
   try {
     return await invoke(name, payload)
@@ -645,6 +652,14 @@ async function switchTab(tabId) {
   renderTabs()
   updateNav()
   absorb(loadRecentPages())
+}
+
+async function persistTabOrder(orderedIds = []) {
+  const currentIds = new Set(state.tabs.keys())
+  if (orderedIds.length !== state.tabs.size || orderedIds.some(id => !currentIds.has(id))) return
+  state.tabs = new Map(orderedIds.map(id => [id, state.tabs.get(id)]))
+  renderTabs()
+  await command('reorder_tabs', { orderedIds }, 'Could not save tab order')
 }
 
 async function closeTab(tabId) {
@@ -1262,6 +1277,7 @@ function cleanupListeners() {
 }
 
 async function init() {
+  installUnhandledRejectionHandler()
   setIconButton($('closeHistory'), 'close', 14)
   setIconButton($('closeBookmarks'), 'close', 14)
   setIconButton($('settingsClose'), 'close', 14)
@@ -1286,6 +1302,7 @@ async function init() {
     setThemePreference, changeSearchEngine, changeStartupBehavior,
     saveShortcutEdits, handleNewTabSearch, retryErrorPage, errorPageHome,
     copyCurrentAddress, deleteShortcutAt,
+    persistTabOrder,
     goHome: () => absorb(command('go_home_tab', { tabId: state.activeId }, 'Could not open home')),
     goBack: () => absorb(command('go_back', { tabId: state.activeId }, 'Could not go back')),
     goForward: () => absorb(command('go_forward', { tabId: state.activeId }, 'Could not go forward')),

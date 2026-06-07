@@ -147,7 +147,12 @@ export function bindEvents(actions) {
   $('tabsContainer').addEventListener('dragend', () => {
     if (dragSrc) dragSrc.style.opacity = ''
     dragSrc = null
-    // Visual reorder complete. Persistence layer intentionally left for explicit ask.
+    const orderedIds = [...$('tabsContainer').querySelectorAll('[data-tab-id]')]
+      .map(tab => tab.dataset.tabId)
+      .filter(Boolean)
+    if (orderedIds.length) {
+      actions.absorb(actions.persistTabOrder?.(orderedIds) || Promise.resolve())
+    }
   })
 
   $('historyList').addEventListener('click', event => {

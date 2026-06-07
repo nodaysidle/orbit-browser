@@ -141,13 +141,21 @@ function tabRow(tab, activeId) {
   const title = tab.title || 'New Tab'
   const active = tab.id === activeId ? ' active' : ''
   const loading = tab.loading ? ' loading' : ''
-  const row = el('div', { className: `tab ${tone}${active}${loading}`, attrs: { draggable: 'true' } })
+  const selected = tab.id === activeId
+  const row = el('div', { className: `tab ${tone}${active}${loading}`, attrs: { draggable: 'true', role: 'presentation' } })
   const main = el('button', {
     className: 'tab-main',
       type: 'button',
       title: tab.url || title,
       dataset: { tabId: tab.id },
-      attrs: { 'aria-label': `Switch to ${title}`, 'aria-busy': tab.loading ? 'true' : false },
+      attrs: {
+        role: 'tab',
+        'aria-selected': selected ? 'true' : 'false',
+        'aria-controls': 'newTabPage',
+        'aria-label': `Switch to ${title}`,
+        'aria-busy': tab.loading ? 'true' : false,
+        tabindex: selected ? '0' : '-1',
+      },
   }, [
     renderMonogram(tab),
     el('span', { className: 'tab-title', text: title }),
