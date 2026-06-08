@@ -14,11 +14,13 @@ export function bindEvents(actions) {
     if (returnFocus) menuButton.focus()
   }
 
-  function openMenu({ focusItem = true, fromEnd = false } = {}) {
+  async function openMenu({ focusItem = true, fromEnd = false } = {}) {
     if (isMenuOpen()) return
+    menu.style.visibility = 'hidden'
     menu.classList.remove('hidden')
     menuButton.setAttribute('aria-expanded', 'true')
-    actions.updateOverlay?.()
+    await actions.updateOverlay?.()
+    menu.style.visibility = ''
     if (!focusItem) return
     const items = menuItems()
     const target = fromEnd ? items.at(-1) : items[0]
@@ -54,15 +56,15 @@ export function bindEvents(actions) {
   menuButton.addEventListener('click', event => {
     event.stopPropagation()
     if (isMenuOpen()) closeMenu()
-    else openMenu()
+    else actions.absorb(openMenu())
   })
   menuButton.addEventListener('keydown', event => {
     if (event.key === 'ArrowDown') {
       event.preventDefault()
-      openMenu({ focusItem: true, fromEnd: false })
+      actions.absorb(openMenu({ focusItem: true, fromEnd: false }))
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
-      openMenu({ focusItem: true, fromEnd: true })
+      actions.absorb(openMenu({ focusItem: true, fromEnd: true }))
     }
   })
   menu.addEventListener('keydown', event => {

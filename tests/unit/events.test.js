@@ -102,6 +102,36 @@ test('bindEvents wires primary browser controls', () => {
   assert.deepEqual(bound.calls.slice(-3), ['new-tab', 'settings', 'retry-error'])
 })
 
+test('menu waits for overlay reservation before revealing dropdown items', async () => {
+  const { nodes } = setup()
+  const item = nodes.menuSettings
+  item.classList.add('dropdown-item')
+  nodes.menuDropdown.append(item)
+  const visibilityAtOverlay = []
+  const bound = actions({
+    updateOverlay: async () => {
+      visibilityAtOverlay.push(nodes.menuDropdown.style.visibility)
+      await Promise.resolve()
+      bound.calls.push('overlay')
+    },
+  })
+
+  bindEvents(bound)
+  nodes.btnMenu.dispatchEvent({ type: 'click', stopPropagation: () => bound.calls.push('stop') })
+
+  assert.equal(nodes.menuDropdown.classList.contains('hidden'), false)
+  assert.equal(nodes.menuDropdown.style.visibility, 'hidden')
+  assert.deepEqual(visibilityAtOverlay, ['hidden'])
+
+  await Promise.resolve()
+  await Promise.resolve()
+
+  assert.equal(nodes.menuDropdown.style.visibility, '')
+  assert.equal(nodes.btnMenu.getAttribute('aria-expanded'), 'true')
+  assert.equal(globalThis.document.activeElement, item)
+  assert.equal(bound.calls.includes('overlay'), true)
+})
+
 test('bindEvents delegates dynamic shortcut and recent page clicks', () => {
   const { document, nodes } = setup()
   const bound = actions()

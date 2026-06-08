@@ -353,7 +353,7 @@ async function syncOverlayHeight() {
   }
 }
 
-function updateOverlay() { absorb(syncOverlayHeight()) }
+function updateOverlay() { return syncOverlayHeight() }
 
 let lastBrowserViewSyncTime = 0
 function queueBrowserViewSync() {

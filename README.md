@@ -15,10 +15,11 @@ Minimal chrome, full web. WKWebView child webviews on Tauri 2. No Electron, no t
 
 ## Premium Stress-Test Build – June 2026
 
-This build is the current Orbit source and package line for NDI stress testing. The older GitHub package is superseded; release artifacts now target `v1.0.2`. Public notarization is intentionally deferred until after NDI manual stress testing.
+This build is the current Orbit source and package line for NDI stress testing. The older GitHub package is superseded; release artifacts now target `v1.0.3`. Public notarization is intentionally deferred until after NDI manual stress testing.
 
 ### What improved in this pass
 
+- **Settings/menu native overlay fixed** — the three-dot menu now reserves native WKWebView overlay space before revealing its dropdown, so Settings is visible and clickable above real page content.
 - **Dark-by-default fixed** — first-run theme now matches the product claim instead of falling back to a mismatched saved/default state.
 - **Reader Mode upgraded** — replaced the weak CSS-only restyle with a reversible local extraction overlay that targets `article`, `main`, `[role="main"]`, or body fallback and strips noisy page chrome.
 - **Runtime tab reorder proof** — added keyboard active-tab reorder (`Cmd+Opt+Shift+←/→`) and runtime smoke evidence that persisted tab order survives through SQLite session state.
@@ -113,8 +114,8 @@ Orbit is a native macOS browser built for people who want the web without the ov
 
 ### Download
 
-- GitHub release: https://github.com/nodaysidle/orbit-browser/releases/tag/v1.0.2
-- Direct DMG: https://github.com/nodaysidle/orbit-browser/releases/download/v1.0.2/Orbit-1.0.2-aarch64.dmg
+- GitHub release: https://github.com/nodaysidle/orbit-browser/releases/tag/v1.0.3
+- Direct DMG: https://github.com/nodaysidle/orbit-browser/releases/download/v1.0.3/Orbit-1.0.3-aarch64.dmg
 
 The release build is ad-hoc signed and locally verified for local/internal use. It is not Apple-notarized yet, so external distribution still needs Developer ID signing plus notarization.
 
