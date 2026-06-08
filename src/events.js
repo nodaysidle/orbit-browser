@@ -155,6 +155,21 @@ export function bindEvents(actions) {
     }
   })
 
+  $('tabsContainer').addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return
+    const tabs = [...$('tabsContainer').querySelectorAll('[data-tab-id]')]
+    const current = document.activeElement
+    const idx = tabs.indexOf(current)
+    if (idx === -1 || tabs.length < 2) return
+    event.preventDefault()
+    const nextIdx = event.key === 'ArrowRight'
+      ? (idx + 1) % tabs.length
+      : (idx - 1 + tabs.length) % tabs.length
+    const next = tabs[nextIdx]
+    next.focus()
+    actions.absorb(actions.switchTab(next.dataset.tabId))
+  })
+
   $('historyList').addEventListener('click', event => {
     const row = event.target.closest('[data-history-url]')
     if (row) actions.absorb(actions.navigate(row.dataset.historyUrl))

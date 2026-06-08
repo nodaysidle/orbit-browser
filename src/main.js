@@ -462,7 +462,10 @@ function updateNav() {
   $('lockIcon').style.color = isHttps ? 'var(--teal)' : 'var(--quiet)'
 
   wrap?.setAttribute('data-url-preview', hasPage ? url : '')
-  $('newTabPage').classList.toggle('hidden', hasPage && !error)
+  const tabpanel = $('newTabPage')
+  tabpanel.classList.toggle('hidden', hasPage && !error)
+  if (tab?.id) tabpanel.setAttribute('aria-labelledby', `tab-btn-${tab.id}`)
+  else tabpanel.removeAttribute('aria-labelledby')
   renderErrorState()
   updateChromeProgress()
   absorb(refreshBookmarkIcon())
@@ -1169,6 +1172,9 @@ function handleShortcut(event) {
 
 export function getShortcutIntent(event) {
   if (event.key === 'Escape') return { type: 'escape' }
+  if (!event.metaKey && event.ctrlKey && event.key === 'Tab') {
+    return { type: event.shiftKey ? 'previous-tab' : 'next-tab' }
+  }
   const mod = event.metaKey || event.ctrlKey
   if (!mod) return null
 

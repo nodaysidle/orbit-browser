@@ -32,6 +32,8 @@ test('renderTabs marks loading tabs as busy and updates count', () => {
   const activeTab = container.children[0].querySelector('.tab-main')
   const inactiveTab = container.children[1].querySelector('.tab-main')
   assert.equal(activeTab.getAttribute('role'), 'tab')
+  assert.equal(activeTab.getAttribute('id'), 'tab-btn-t1')
+  assert.equal(activeTab.getAttribute('aria-controls'), 'newTabPage')
   assert.equal(activeTab.getAttribute('aria-selected'), 'true')
   assert.equal(activeTab.getAttribute('tabindex'), '0')
   assert.equal(inactiveTab.getAttribute('aria-selected'), 'false')

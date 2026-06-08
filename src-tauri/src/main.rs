@@ -8,10 +8,12 @@ mod layout;
 mod tabs;
 
 use adblock::AdBlocker;
-use browser::{lock_state, ordered_tab_infos, report_error, BrowserState, TabData, TabInfo};
+use browser::{lock_state, report_error, BrowserState, TabData, TabInfo};
 use db::Db;
 use download::download_file;
 use layout::{resize_active_webview, resize_active_webview_to, MAX_OVERLAY_HEIGHT};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tabs::{
     close_tab, create_tab, eval_on_tab, find_in_page, get_active_tab, get_tabs, go_back,
     go_forward, go_home_tab, navigate_tab, reload_tab, reorder_tabs, reset_zoom, stop_tab,
@@ -119,20 +121,6 @@ fn set_overlay_height(
     *lock_state(&state.overlay_height, "overlay_height")? = height;
     resize_active_webview(&app);
     Ok(())
-}
-
-#[tauri::command]
-fn save_session(
-    _app: tauri::AppHandle,
-    state: tauri::State<'_, BrowserState>,
-    db: tauri::State<'_, Db>,
-) -> Result<(), String> {
-    let tabs_guard = lock_state(&state.tabs, "tabs")?;
-    let order_guard = lock_state(&state.tab_order, "tab_order")?;
-    let tabs: Vec<TabInfo> = ordered_tab_infos(&tabs_guard, &order_guard);
-    let active = lock_state(&state.active_tab, "active_tab")?.clone();
-    db.save_session(&tabs, active.as_deref())
-        .map_err(|e| e.to_string())
 }
 
 fn install_browser_menu(app: &tauri::AppHandle) -> Result<(), String> {
@@ -445,6 +433,7 @@ fn main() {
 
             // Window resize handler — update stored logical size, then reposition webview
             let app_h = app.handle().clone();
+            let last_window_sync = Arc::new(Mutex::new(Instant::now() - Duration::from_millis(16)));
             let main = app
                 .get_webview_window("main")
                 .ok_or_else(|| "main window not found".to_string())?;
@@ -455,6 +444,13 @@ fn main() {
                         | tauri::WindowEvent::ScaleFactorChanged { .. }
                         | tauri::WindowEvent::Moved(_)
                 ) {
+                    if let Ok(mut last) = last_window_sync.lock() {
+                        if last.elapsed() < Duration::from_millis(16) {
+                            return;
+                        }
+                        *last = Instant::now();
+                    }
+
                     // Refresh the cached logical size from the window's actual state
                     if let Some(win) = app_h.get_webview_window("main") {
                         let state = app_h.state::<BrowserState>();
@@ -498,7 +494,6 @@ fn main() {
             set_setting,
             sync_browser_view,
             set_overlay_height,
-            save_session,
             download_file,
         ])
         .run(tauri::generate_context!());

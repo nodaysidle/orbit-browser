@@ -1,6 +1,5 @@
 use rusqlite::{params, Connection, OptionalExtension, Result};
 use serde::{Deserialize, Serialize};
-use std::io;
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
@@ -308,11 +307,13 @@ impl Db {
     }
 
     fn lock_conn(&self) -> Result<MutexGuard<'_, Connection>> {
-        self.conn.lock().map_err(|_| {
-            rusqlite::Error::ToSqlConversionFailure(Box::new(io::Error::other(
-                "database lock poisoned",
-            )))
-        })
+        match self.conn.lock() {
+            Ok(guard) => Ok(guard),
+            Err(poisoned) => {
+                eprintln!("orbit: database lock poisoned; recovering inner connection");
+                Ok(poisoned.into_inner())
+            }
+        }
     }
 }
 
@@ -403,6 +404,23 @@ mod tests {
             .unwrap();
         assert_eq!(version, CURRENT_SCHEMA_VERSION);
         assert_eq!(session_tabs, "[]");
+    }
+
+    #[test]
+    fn test_lock_conn_recovers_poisoned_mutex() {
+        let db = test_db();
+        let _ = std::panic::catch_unwind(|| {
+            let _guard = db.conn.lock().unwrap();
+            panic!("poison test database lock");
+        });
+
+        let conn = db.lock_conn().unwrap();
+        let version: i64 = conn
+            .query_row("SELECT MAX(version) FROM schema_version", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(version, CURRENT_SCHEMA_VERSION);
     }
 
     #[test]
