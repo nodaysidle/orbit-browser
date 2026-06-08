@@ -55,11 +55,27 @@ async function captureTheme(theme) {
     settingsModal.classList.add('hidden')
     document.querySelector('#newTabSearchInput')?.focus()
     const homeSearch = document.querySelector('.home-search')
+    const homeSearchIcon = document.querySelector('.home-search-icon')
+    const newTabButton = document.querySelector('.new-tab-btn')
     const homeSearchRect = homeSearch?.getBoundingClientRect()
+    const homeSearchIconRect = homeSearchIcon?.getBoundingClientRect()
+    const newTabButtonRect = newTabButton?.getBoundingClientRect()
     const homeSearchStyle = homeSearch ? getComputedStyle(homeSearch) : null
+    const homeSearchIconStyle = homeSearchIcon ? getComputedStyle(homeSearchIcon) : null
+    const newTabButtonStyle = newTabButton ? getComputedStyle(newTabButton) : null
     const newTabSearchStyle = getComputedStyle(document.querySelector('#newTabSearchInput'))
+    const iconCenterDelta = Math.abs(((homeSearchIconRect?.top || 0) + (homeSearchIconRect?.height || 0) / 2) - ((homeSearchRect?.top || 0) + (homeSearchRect?.height || 0) / 2))
+    const plusButtonPolished = Boolean(
+      newTabButtonRect && newTabButtonRect.width >= 32 && newTabButtonRect.height >= 32 && Number.parseFloat(newTabButtonStyle.borderRadius) >= 11
+    )
+    const newTabInputBoxless = Boolean(
+      newTabSearchStyle.outlineStyle === 'none' &&
+      newTabSearchStyle.borderTopStyle === 'none' &&
+      newTabSearchStyle.boxShadow === 'none' &&
+      ['rgba(0, 0, 0, 0)', 'transparent'].includes(newTabSearchStyle.backgroundColor)
+    )
     const newTabPillPolished = Boolean(
-      homeSearchRect && homeSearchRect.height >= 60 && Number.parseFloat(homeSearchStyle.borderRadius) >= 30 && newTabSearchStyle.outlineStyle === 'none'
+      homeSearchRect && homeSearchRect.height >= 60 && Number.parseFloat(homeSearchStyle.borderRadius) >= 30 && newTabInputBoxless && iconCenterDelta <= 1 && Number.parseFloat(homeSearchIconStyle.borderRadius) >= 21 && plusButtonPolished
     )
     return {
       theme: document.documentElement.dataset.theme,
@@ -73,8 +89,15 @@ async function captureTheme(theme) {
       settingsKeepsChromeVisible,
       newTabPillPolished,
       newTabSearchOutline: newTabSearchStyle.outlineStyle,
+      newTabInputBorder: newTabSearchStyle.borderTopStyle,
+      newTabInputBoxShadow: newTabSearchStyle.boxShadow,
       newTabPillHeight: Number(homeSearchRect?.height?.toFixed(1) || 0),
       newTabPillRadius: Number.parseFloat(homeSearchStyle?.borderRadius || '0'),
+      newTabIconCenterDelta: Number(iconCenterDelta.toFixed(2)),
+      newTabIconRadius: Number.parseFloat(homeSearchIconStyle?.borderRadius || '0'),
+      plusButtonPolished,
+      plusButtonSize: Number(newTabButtonRect?.width?.toFixed(1) || 0),
+      plusButtonRadius: Number.parseFloat(newTabButtonStyle?.borderRadius || '0'),
       titlebarBottom: Number(titlebarRect?.bottom?.toFixed(1) || 0),
       settingsTop: Number(settingsRect.top.toFixed(1)),
       settingsPanelTop: Number(settingsPanelRect?.top?.toFixed(1) || 0),

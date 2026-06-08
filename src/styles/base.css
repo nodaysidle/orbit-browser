@@ -179,8 +179,12 @@ button {
 
 input {
   min-width: 0;
+  border: 0;
   background: transparent;
   outline: 0;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 button:focus-visible:not(:disabled),

@@ -15,11 +15,12 @@ Minimal chrome, full web. WKWebView child webviews on Tauri 2. No Electron, no t
 
 ## Premium Stress-Test Build – June 2026
 
-This build is the current Orbit source and package line for NDI stress testing. The older GitHub package is superseded; release artifacts now target `v1.0.4`. Public notarization is intentionally deferred until after NDI manual stress testing.
+This build is the current Orbit source and package line for NDI stress testing. The older GitHub package is superseded; release artifacts now target `v1.0.5`. Public notarization is intentionally deferred until after NDI manual stress testing.
 
 ### What improved in this pass
 
 - **Settings/menu native overlay fixed** — the three-dot menu now reserves native WKWebView overlay space before revealing its dropdown, so Settings is visible and clickable above real page content.
+- **New-tab polish pass** — the search pill is now one coherent rounded command control with no inner native outline, and the `+` tab button has a stronger premium squircle treatment.
 - **Dark-by-default fixed** — first-run theme now matches the product claim instead of falling back to a mismatched saved/default state.
 - **Reader Mode upgraded** — replaced the weak CSS-only restyle with a reversible local extraction overlay that targets `article`, `main`, `[role="main"]`, or body fallback and strips noisy page chrome.
 - **Runtime tab reorder proof** — added keyboard active-tab reorder (`Cmd+Opt+Shift+←/→`) and runtime smoke evidence that persisted tab order survives through SQLite session state.
@@ -31,6 +32,7 @@ This build is the current Orbit source and package line for NDI stress testing. 
 
 - `npm test`
 - `npm run check`
+- `npm run qa:visual`
 - `scripts/premium-visual-qa.sh`
 - `npm run tauri -- build --bundles dmg`
 - `codesign --verify --deep --strict --verbose=2 src-tauri/target/release/bundle/macos/Orbit.app`
@@ -114,8 +116,8 @@ Orbit is a native macOS browser built for people who want the web without the ov
 
 ### Download
 
-- GitHub release: https://github.com/nodaysidle/orbit-browser/releases/tag/v1.0.4
-- Direct DMG: https://github.com/nodaysidle/orbit-browser/releases/download/v1.0.4/Orbit-1.0.4-aarch64.dmg
+- GitHub release: https://github.com/nodaysidle/orbit-browser/releases/tag/v1.0.5
+- Direct DMG: https://github.com/nodaysidle/orbit-browser/releases/download/v1.0.5/Orbit-1.0.5-aarch64.dmg
 
 The release build is ad-hoc signed and locally verified for local/internal use. It is not Apple-notarized yet, so external distribution still needs Developer ID signing plus notarization.
 
