@@ -43,6 +43,15 @@ async function captureTheme(theme) {
     const focusVisible = document.activeElement?.id === 'addressInput'
     const overflowX = document.documentElement.scrollWidth > window.innerWidth
     const overflowY = document.documentElement.scrollHeight > window.innerHeight
+    const chromeHeight = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--chrome-height')) || 124
+    const titlebarRect = document.querySelector('.titlebar')?.getBoundingClientRect()
+    const settingsModal = document.querySelector('#settingsModal')
+    settingsModal.classList.remove('hidden')
+    const settingsRect = settingsModal.getBoundingClientRect()
+    const settingsPanelRect = document.querySelector('.settings-panel')?.getBoundingClientRect()
+    const settingsKeepsChromeVisible = Boolean(
+      titlebarRect && settingsRect.top >= chromeHeight - 1 && settingsPanelRect && settingsPanelRect.top >= chromeHeight
+    )
     return {
       theme: document.documentElement.dataset.theme,
       tabCount,
@@ -52,8 +61,16 @@ async function captureTheme(theme) {
       overflowY,
       p95FrameMs: Number(p95.toFixed(2)),
       maxFrameMs: Number(max.toFixed(2)),
+      settingsKeepsChromeVisible,
+      titlebarBottom: Number(titlebarRect?.bottom?.toFixed(1) || 0),
+      settingsTop: Number(settingsRect.top.toFixed(1)),
+      settingsPanelTop: Number(settingsPanelRect?.top?.toFixed(1) || 0),
     }
   })
+
+  if (metrics.overflowX || metrics.overflowY || !metrics.focusVisible || !metrics.settingsKeepsChromeVisible) {
+    throw new Error(`visual QA failed for ${theme}: ${JSON.stringify(metrics)}`)
+  }
 
   const screenshot = `${outDir}/orbit-${theme}-1440x1000.png`
   await page.screenshot({ path: screenshot, fullPage: false })

@@ -316,6 +316,12 @@ function chromeHeight() {
 }
 
 function activeOverlayElement() {
+  const settingsModal = $('settingsModal')
+  if (settingsModal && !settingsModal.classList.contains('hidden')) return settingsModal
+  const downloadModal = $('downloadModal')
+  if (downloadModal && !downloadModal.classList.contains('hidden')) return downloadModal
+  const aboutModal = $('aboutModal')
+  if (aboutModal && !aboutModal.classList.contains('hidden')) return aboutModal
   const history = $('historyPanel')
   if (history && !history.classList.contains('hidden')) return history
   const bookmarks = $('bookmarksPanel')
@@ -842,6 +848,7 @@ async function handleDownload(url) {
   state.pendingDownloadUrl = url
   $('downloadMessage').textContent = `Save ${filename} to Downloads on this Mac?`
   openModal($('downloadModal'), '#downloadConfirm')
+  updateOverlay()
 }
 
 async function confirmDownload() {
@@ -849,6 +856,7 @@ async function confirmDownload() {
   if (!url) return
   state.pendingDownloadUrl = null
   closeModal($('downloadModal'), $('addressInput'))
+  updateOverlay()
   try {
     await invoke('download_file', { url })
   } catch (error) {
@@ -861,6 +869,7 @@ function cancelDownload() {
   const hadPending = Boolean(state.pendingDownloadUrl)
   state.pendingDownloadUrl = null
   closeModal($('downloadModal'), $('addressInput'))
+  updateOverlay()
   if (hadPending) showToast('Download canceled', 'info')
 }
 
@@ -1117,10 +1126,12 @@ function openSettingsPanel() {
   closeAllPanels()
   syncSettingsControls()
   openModal($('settingsModal'), '#settingsClose')
+  updateOverlay()
 }
 
 function closeSettingsPanel() {
   closeModal($('settingsModal'), $('addressInput'))
+  updateOverlay()
 }
 
 async function loadRecentPages() {
@@ -1197,10 +1208,12 @@ function cycleTab(direction) {
 
 function showAboutPanel() {
   openModal($('aboutModal'), '#aboutClose')
+  updateOverlay()
 }
 
 function closeAboutPanel() {
   closeModal($('aboutModal'), $('addressInput'))
+  updateOverlay()
 }
 
 function cleanupListeners() {

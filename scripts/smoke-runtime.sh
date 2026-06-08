@@ -155,9 +155,11 @@ except json.JSONDecodeError:
     sys.exit(1)
 
 joined = "\n".join(tabs)
-if "www.iana.org/help/example-domains" not in joined or "httpbin.org/get" not in joined:
+last_iana = joined.rfind("www.iana.org/help/example-domains")
+last_httpbin = joined.rfind("httpbin.org/get")
+if last_iana == -1 or last_httpbin == -1:
     sys.exit(1)
-if joined.find("www.iana.org/help/example-domains") > joined.find("httpbin.org/get"):
+if last_iana > last_httpbin:
     sys.exit(1)
 PY
 then

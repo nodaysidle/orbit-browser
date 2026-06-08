@@ -428,7 +428,7 @@
 
 .modal-backdrop {
   position: absolute;
-  inset: 0;
+  inset: var(--chrome-height) 0 0 0;
   z-index: 700;
   display: grid;
   place-items: center;
