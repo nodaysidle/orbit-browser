@@ -7,13 +7,12 @@ use crate::db::Db;
 use crate::download::is_download_url;
 use crate::layout::{live_webview_bounds, sync_visible_webviews};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use tauri::webview::{NewWindowResponse, WebviewBuilder};
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, Window};
 
 fn save_current_session(app: &AppHandle, state: &BrowserState) {
-    let db = app.state::<Db>();
     let tabs: Vec<TabInfo> = match (
         lock_state(&state.tabs, "tabs"),
         lock_state(&state.tab_order, "tab_order"),
@@ -31,9 +30,13 @@ fn save_current_session(app: &AppHandle, state: &BrowserState) {
             return;
         }
     };
-    if let Err(err) = db.save_session(&tabs, active.as_deref()) {
-        report_error(format_args!("failed to save session: {err}"));
-    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let db = app.state::<Db>();
+        if let Err(err) = db.save_session(&tabs, active.as_deref()) {
+            report_error(format_args!("failed to save session: {err}"));
+        }
+    });
 }
 
 fn tab_exists(state: &BrowserState, tab_id: &str) -> bool {
@@ -766,6 +769,10 @@ fn validate_tab_order(
     tabs: &HashMap<String, TabData>,
     ordered_ids: &[String],
 ) -> Result<(), String> {
+    let unique_ids: HashSet<&String> = ordered_ids.iter().collect();
+    if unique_ids.len() != ordered_ids.len() {
+        return Err("invalid tab order: duplicate tab id".to_string());
+    }
     if ordered_ids.len() != tabs.len() || ordered_ids.iter().any(|id| !tabs.contains_key(id)) {
         return Err("invalid tab order".to_string());
     }
@@ -892,6 +899,16 @@ mod tests {
         assert!(validate_tab_order(&tabs, &["b".into(), "a".into()]).is_ok());
         assert!(validate_tab_order(&tabs, &["b".into(), "ghost".into()]).is_err());
         assert!(validate_tab_order(&tabs, &["b".into()]).is_err());
+    }
+
+    #[test]
+    fn test_validate_tab_order_rejects_duplicate_entries() {
+        let mut tabs = HashMap::new();
+        tabs.insert("a".into(), test_tab_data("a", "https://a.example"));
+        tabs.insert("b".into(), test_tab_data("b", "https://b.example"));
+
+        let err = validate_tab_order(&tabs, &["a".into(), "a".into()]).unwrap_err();
+        assert!(err.contains("duplicate"));
     }
 
     #[test]

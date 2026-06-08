@@ -128,6 +128,27 @@ test('bindEvents persists tab drag order through actions', () => {
   assert.equal(bound.calls.at(-1), 'persist-tabs:b,a')
 })
 
+test('bindEvents arrow keys move tab focus and switch active tab', () => {
+  const { document, nodes } = setup()
+  const bound = actions()
+  const tabA = document.createElement('button')
+  tabA.dataset.tabId = 'a'
+  const tabB = document.createElement('button')
+  tabB.dataset.tabId = 'b'
+  nodes.tabsContainer.append(tabA, tabB)
+
+  bindEvents(bound)
+  tabA.focus()
+  nodes.tabsContainer.dispatchEvent({
+    type: 'keydown',
+    key: 'ArrowRight',
+    preventDefault: () => bound.calls.push('prevent-default'),
+  })
+
+  assert.equal(document.activeElement, tabB)
+  assert.deepEqual(bound.calls.slice(-2), ['prevent-default', 'switch-tab:b'])
+})
+
 test('bindEvents persists settings changes through actions', () => {
   const { nodes } = setup()
   const bound = actions()

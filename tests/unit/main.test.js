@@ -14,6 +14,8 @@ test('getShortcutIntent resolves command shortcuts through the action map', asyn
   assert.deepEqual(getShortcutIntent({ key: 't', metaKey: true, ctrlKey: false, shiftKey: false }), { type: 'new-tab' })
   assert.deepEqual(getShortcutIntent({ key: '[', metaKey: true, ctrlKey: false, shiftKey: true }), { type: 'previous-tab' })
   assert.deepEqual(getShortcutIntent({ key: '3', metaKey: true, ctrlKey: false, shiftKey: false }), { type: 'switch-tab-index', index: 2 })
+  assert.deepEqual(getShortcutIntent({ key: 'Tab', metaKey: false, ctrlKey: true, shiftKey: false }), { type: 'next-tab' })
+  assert.deepEqual(getShortcutIntent({ key: 'Tab', metaKey: false, ctrlKey: true, shiftKey: true }), { type: 'previous-tab' })
 })
 
 test('getShortcutIntent ignores destructive shortcuts inside editable fields', async () => {

@@ -41,7 +41,7 @@
   --chrome-alpha: rgba(33, 27, 39, 0.9);
   --chrome-hover: rgba(240, 214, 179, 0.12);
   --button-bg: rgba(240, 214, 179, 0.08);
-  --focus-ring: rgba(240, 179, 95, 0.24);
+  --focus-ring: rgba(240, 179, 95, 0.6);
   --focus-border: rgba(240, 179, 95, 0.7);
   --tab-shadow: 0 12px 26px rgba(7, 5, 11, 0.42);
   --address-inset: inset 0 1px 0 rgba(255, 255, 255, 0.07);
@@ -94,7 +94,7 @@
   --chrome-alpha: rgba(255, 251, 246, 0.9);
   --chrome-hover: rgba(116, 93, 64, 0.08);
   --button-bg: rgba(255, 251, 246, 0.94);
-  --focus-ring: rgba(180, 112, 34, 0.22);
+  --focus-ring: rgba(180, 112, 34, 0.55);
   --focus-border: rgba(180, 112, 34, 0.62);
   --tab-shadow: 0 8px 20px rgba(84, 59, 37, 0.14);
   --address-inset: inset 0 1px 0 rgba(255, 255, 255, 0.92);

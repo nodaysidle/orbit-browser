@@ -150,6 +150,7 @@ function tabRow(tab, activeId) {
       dataset: { tabId: tab.id },
       attrs: {
         role: 'tab',
+        id: `tab-btn-${tab.id}`,
         'aria-selected': selected ? 'true' : 'false',
         'aria-controls': 'newTabPage',
         'aria-label': `Switch to ${title}`,

@@ -220,6 +220,13 @@
   border-color: var(--red);
 }
 
+.shortcut-delete:focus-visible {
+  outline: none;
+  opacity: 1;
+  transform: scale(1);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
 .shortcut-btn:focus-visible {
   outline: none;
   transform: translateY(-2px);

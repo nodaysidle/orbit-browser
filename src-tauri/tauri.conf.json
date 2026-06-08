@@ -26,8 +26,8 @@
     ],
     "security": {
       "capabilities": ["main"],
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: http: data: asset: http://asset.localhost; font-src 'self'; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
-      "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: http: data: asset: http://asset.localhost; font-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: http: data: asset: https://asset.localhost; font-src 'self'; connect-src 'self' ipc: https://ipc.localhost; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+      "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: http: data: asset: https://asset.localhost; font-src 'self'; connect-src 'self' ipc: https://ipc.localhost http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
       "dangerousDisableAssetCspModification": false
     }
   },
@@ -48,7 +48,7 @@
       "frameworks": [],
       "minimumSystemVersion": "10.15",
       "signingIdentity": "-",
-      "entitlements": null
+      "entitlements": "entitlements.plist"
     }
   }
 }
