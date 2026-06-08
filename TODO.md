@@ -1,6 +1,6 @@
 # TODO
 
-Current remaining issues after the Orbit Browser audit-fix hardening pass.
+Current remaining issues after Orbit Browser handoff iteration 3.
 
 ## 1. App is ad-hoc signed, not notarized
 
@@ -26,19 +26,18 @@ xcrun stapler validate /Applications/Orbit.app
 **Status:**
 Backlog / distribution upgrade. Not blocking the current internal release gate.
 
-## 2. `cargo audit` is not available in the current environment
+## 2. Rust dependency audit gate
 
 **Issue:**
-The Rust dependency security audit was not run because `cargo-audit` is not installed.
+`cargo audit` now exists in CI, but dependency vulnerability scanning still depends on RustSec advisory availability and the installed `cargo-audit` binary.
 
 **Impact:**
-Known RustSec advisories may be missed until the dependency audit tool is installed and wired into release checks.
+Known RustSec advisories may be missed if the security job is skipped or unavailable.
 
 **Solution:**
-Install `cargo-audit` and add it to the verification gate:
+Keep the CI security job active and run locally before releases:
 
 ```bash
-cargo install cargo-audit
 cargo audit
 ```
 
@@ -48,82 +47,18 @@ If advisories appear:
 - rerun `npm run check` and the Tauri build after dependency changes.
 
 **Status:**
-Backlog / release hygiene.
+Release hygiene.
 
-## 3. Internal audit files are still loose at repository root
-
-**Issue:**
-`AUDIT.md` and `AUDIT_PROMPTS.md` exist as local untracked root files.
-
-**Impact:**
-They are useful internally, but publishing them at root would make the public repository look more like an internal workbench than a polished product repo.
-
-**Solution:**
-Choose one of these paths:
-
-- Keep them local and untracked if they are only internal working notes.
-- Move them to `docs/internal/` if they should be versioned.
-- Remove them from the migration checkout if they are no longer needed.
-
-If versioned, prefer:
-
-```txt
-docs/internal/AUDIT.md
-docs/internal/AUDIT_PROMPTS.md
-```
-
-**Status:**
-Pending product/repo-presentation decision.
-
-## 4. No CI release gate is wired yet
+## 3. Automated installed-app smoke coverage
 
 **Issue:**
-The full local verification gate passes, but there is no confirmed GitHub Actions gate for every PR/release.
+`scripts/smoke-test.sh` provides a repeatable manual QA checklist, but it is not automated yet.
 
 **Impact:**
-Future regressions could merge if checks are only run manually.
+Manual QA can catch tab/session/keyboard regressions, but future releases still depend on human execution.
 
 **Solution:**
-Add a GitHub Actions workflow that runs at minimum:
-
-```bash
-npm ci
-npm run check
-```
-
-For release branches/tags, add:
-
-```bash
-npm run tauri build -- --bundles dmg
-```
-
-Optional later:
-- cache Rust/npm dependencies;
-- upload DMG artifacts from tagged builds;
-- run `cargo audit` after tool installation.
+Replace or extend the checklist with automated coverage using `@tauri-apps/driver` or Playwright once the browser chrome can be driven reliably.
 
 **Status:**
-Backlog / automation hardening.
-
-## 5. Manual smoke test is still shallow
-
-**Issue:**
-The app launches successfully from the DMG, but the smoke test does not yet exercise a full browser workflow end-to-end.
-
-**Impact:**
-Launch success proves packaging is valid, but does not prove tab persistence, keyboard navigation, or session restore work in the installed app.
-
-**Solution:**
-Create a repeatable smoke checklist or automated UI smoke script covering:
-
-- launch from installed `.app`;
-- open tab;
-- close tab;
-- reorder tabs;
-- quit and relaunch;
-- verify session restoration;
-- verify keyboard tab navigation;
-- verify no console/runtime errors.
-
-**Status:**
-Backlog / QA hardening.
+Backlog / QA automation hardening.

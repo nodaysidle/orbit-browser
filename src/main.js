@@ -48,6 +48,10 @@ const state = {
 const win = getCurrentWindow()
 const $ = id => document.getElementById(id)
 const MAX_OVERLAY_HEIGHT = 680
+const BROWSER_VIEW_SYNC_INTERVAL_MS = 100
+const TOAST_DURATION_MS = 3200
+const TOAST_FADE_MS = 190
+const CONFIRM_TOAST_TIMEOUT_MS = 12000
 const STARTUP_BEHAVIORS = new Set(['restore', 'new_tab'])
 const DEFAULT_SHORTCUTS = [
   { title: 'NODAYSIDLE GitHub', url: 'https://github.com/nodaysidle' },
@@ -157,8 +161,8 @@ function showToast(message, tone = 'error') {
   requestAnimationFrame(() => toast.classList.add('visible'))
   window.setTimeout(() => {
     toast.classList.remove('visible')
-    window.setTimeout(() => toast.remove(), 190)
-  }, 3200)
+    window.setTimeout(() => toast.remove(), TOAST_FADE_MS)
+  }, TOAST_DURATION_MS)
 }
 
 function showConfirmToast({ message, confirmLabel = 'Download', cancelLabel = 'Cancel', onConfirm, onCancel }) {
@@ -176,7 +180,7 @@ function showConfirmToast({ message, confirmLabel = 'Download', cancelLabel = 'C
 
   const close = () => {
     toast.classList.remove('visible')
-    window.setTimeout(() => toast.remove(), 190)
+    window.setTimeout(() => toast.remove(), TOAST_FADE_MS)
   }
 
   confirm.addEventListener('click', () => {
@@ -188,7 +192,7 @@ function showConfirmToast({ message, confirmLabel = 'Download', cancelLabel = 'C
 
   window.setTimeout(() => {
     if (toast.isConnected) close()
-  }, 12000)
+  }, CONFIRM_TOAST_TIMEOUT_MS)
 }
 
 function setIconButton(button, name, size = 18) { button.replaceChildren(icon(name, size)) }
@@ -331,10 +335,14 @@ async function syncOverlayHeight() {
 
 function updateOverlay() { absorb(syncOverlayHeight()) }
 
+let lastBrowserViewSyncTime = 0
 function queueBrowserViewSync() {
-  if (state.resizeFrame) cancelAnimationFrame(state.resizeFrame)
+  if (state.resizeFrame) return
   state.resizeFrame = requestAnimationFrame(() => {
     state.resizeFrame = 0
+    const now = Date.now()
+    if (now - lastBrowserViewSyncTime < BROWSER_VIEW_SYNC_INTERVAL_MS) return
+    lastBrowserViewSyncTime = now
     absorb(syncBrowserView())
   })
 }
@@ -1042,6 +1050,8 @@ function closeModal(modal) {
   activeModal = null
   if (activeModalTrigger instanceof HTMLElement) {
     activeModalTrigger.focus()
+  } else {
+    $('addressInput')?.focus()
   }
   activeModalTrigger = null
 }

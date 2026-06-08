@@ -8,6 +8,7 @@ pub struct Db {
 }
 
 const CURRENT_SCHEMA_VERSION: i64 = 1;
+const MAX_HISTORY_ENTRIES: i64 = 10_000;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Bookmark {
@@ -36,6 +37,7 @@ impl Db {
             conn: Mutex::new(conn),
         };
         db.init_schema()?;
+        db.trim_history()?;
         Ok(db)
     }
 
@@ -250,6 +252,18 @@ impl Db {
     pub fn clear_history(&self) -> Result<()> {
         let conn = self.lock_conn()?;
         conn.execute("DELETE FROM history", [])?;
+        Ok(())
+    }
+
+    pub fn trim_history(&self) -> Result<()> {
+        let conn = self.lock_conn()?;
+        conn.execute(
+            "DELETE FROM history
+             WHERE id NOT IN (
+                 SELECT id FROM history ORDER BY last_visited DESC, id DESC LIMIT ?1
+             )",
+            params![MAX_HISTORY_ENTRIES],
+        )?;
         Ok(())
     }
 
@@ -493,6 +507,48 @@ mod tests {
         // Overwrite
         db.set_setting("theme", "light").unwrap();
         assert_eq!(db.get_setting("theme").unwrap(), Some("light".into()));
+    }
+
+    #[test]
+    fn test_trim_history_keeps_most_recent_entries() {
+        let db = test_db();
+        {
+            let mut conn = db.lock_conn().unwrap();
+            let tx = conn.transaction().unwrap();
+            for index in 0..(MAX_HISTORY_ENTRIES + 5) {
+                tx.execute(
+                    "INSERT INTO history (url, title, last_visited) VALUES (?1, ?2, ?3)",
+                    params![
+                        format!("https://example-{index}.com"),
+                        format!("Example {index}"),
+                        index,
+                    ],
+                )
+                .unwrap();
+            }
+            tx.commit().unwrap();
+        }
+
+        db.trim_history().unwrap();
+
+        let conn = db.lock_conn().unwrap();
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM history", [], |row| row.get(0))
+            .unwrap();
+        let oldest_kept: i64 = conn
+            .query_row("SELECT MIN(last_visited) FROM history", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        let newest_kept: i64 = conn
+            .query_row("SELECT MAX(last_visited) FROM history", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+
+        assert_eq!(count, MAX_HISTORY_ENTRIES);
+        assert_eq!(oldest_kept, 5);
+        assert_eq!(newest_kept, MAX_HISTORY_ENTRIES + 4);
     }
 
     #[test]
