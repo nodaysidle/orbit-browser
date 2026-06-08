@@ -52,6 +52,15 @@ async function captureTheme(theme) {
     const settingsKeepsChromeVisible = Boolean(
       titlebarRect && settingsRect.top >= chromeHeight - 1 && settingsPanelRect && settingsPanelRect.top >= chromeHeight
     )
+    settingsModal.classList.add('hidden')
+    document.querySelector('#newTabSearchInput')?.focus()
+    const homeSearch = document.querySelector('.home-search')
+    const homeSearchRect = homeSearch?.getBoundingClientRect()
+    const homeSearchStyle = homeSearch ? getComputedStyle(homeSearch) : null
+    const newTabSearchStyle = getComputedStyle(document.querySelector('#newTabSearchInput'))
+    const newTabPillPolished = Boolean(
+      homeSearchRect && homeSearchRect.height >= 60 && Number.parseFloat(homeSearchStyle.borderRadius) >= 30 && newTabSearchStyle.outlineStyle === 'none'
+    )
     return {
       theme: document.documentElement.dataset.theme,
       tabCount,
@@ -62,13 +71,17 @@ async function captureTheme(theme) {
       p95FrameMs: Number(p95.toFixed(2)),
       maxFrameMs: Number(max.toFixed(2)),
       settingsKeepsChromeVisible,
+      newTabPillPolished,
+      newTabSearchOutline: newTabSearchStyle.outlineStyle,
+      newTabPillHeight: Number(homeSearchRect?.height?.toFixed(1) || 0),
+      newTabPillRadius: Number.parseFloat(homeSearchStyle?.borderRadius || '0'),
       titlebarBottom: Number(titlebarRect?.bottom?.toFixed(1) || 0),
       settingsTop: Number(settingsRect.top.toFixed(1)),
       settingsPanelTop: Number(settingsPanelRect?.top?.toFixed(1) || 0),
     }
   })
 
-  if (metrics.overflowX || metrics.overflowY || !metrics.focusVisible || !metrics.settingsKeepsChromeVisible) {
+  if (metrics.overflowX || metrics.overflowY || !metrics.focusVisible || !metrics.settingsKeepsChromeVisible || !metrics.newTabPillPolished) {
     throw new Error(`visual QA failed for ${theme}: ${JSON.stringify(metrics)}`)
   }
 

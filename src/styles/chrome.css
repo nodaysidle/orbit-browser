@@ -295,10 +295,25 @@
 }
 
 .new-tab-btn {
-  width: 26px;
-  height: 26px;
-  border-color: var(--line);
-  border-radius: 7px;
+  width: 30px;
+  height: 30px;
+  border-color: color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--button-bg) 46%, transparent);
+  color: color-mix(in srgb, var(--text) 72%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.new-tab-btn svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.new-tab-btn svg path {
+  stroke-width: 1.55;
 }
 
 .nav-bar {

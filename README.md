@@ -15,7 +15,7 @@ Minimal chrome, full web. WKWebView child webviews on Tauri 2. No Electron, no t
 
 ## Premium Stress-Test Build – June 2026
 
-This build is the current Orbit source and package line for NDI stress testing. The older GitHub package is superseded; release artifacts now target `v1.0.3`. Public notarization is intentionally deferred until after NDI manual stress testing.
+This build is the current Orbit source and package line for NDI stress testing. The older GitHub package is superseded; release artifacts now target `v1.0.4`. Public notarization is intentionally deferred until after NDI manual stress testing.
 
 ### What improved in this pass
 
@@ -114,8 +114,8 @@ Orbit is a native macOS browser built for people who want the web without the ov
 
 ### Download
 
-- GitHub release: https://github.com/nodaysidle/orbit-browser/releases/tag/v1.0.3
-- Direct DMG: https://github.com/nodaysidle/orbit-browser/releases/download/v1.0.3/Orbit-1.0.3-aarch64.dmg
+- GitHub release: https://github.com/nodaysidle/orbit-browser/releases/tag/v1.0.4
+- Direct DMG: https://github.com/nodaysidle/orbit-browser/releases/download/v1.0.4/Orbit-1.0.4-aarch64.dmg
 
 The release build is ad-hoc signed and locally verified for local/internal use. It is not Apple-notarized yet, so external distribution still needs Developer ID signing plus notarization.
 
