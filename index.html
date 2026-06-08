@@ -120,7 +120,16 @@
           <div class="recent-header">
             <span>Recent</span>
           </div>
-          <div class="recent-grid" id="recentPages"></div>
+          <div class="recent-grid" id="recentPages">
+            <div class="recent-empty recent-empty-with-suggestions">
+              <span>Start with a clean orbit.</span>
+            </div>
+            <div class="recent-suggestions">
+              <button class="recent-suggestion-pill" type="button" data-recent-url="https://youtube.com">YouTube</button>
+              <button class="recent-suggestion-pill" type="button" data-recent-url="https://producthunt.com">Product Hunt</button>
+              <button class="recent-suggestion-pill" type="button" data-recent-url="https://github.com/nodaysidle">NODAYSIDLE</button>
+            </div>
+          </div>
         </section>
       </div>
       <div class="error-page hidden" id="errorPage" role="status" aria-live="polite">
@@ -142,7 +151,7 @@
       <button class="dropdown-item danger" id="menuClearHistory" role="menuitem" tabindex="-1" type="button">Clear History</button>
     </div>
 
-    <section class="dropdown panel hidden" id="historyPanel" aria-label="History">
+    <section class="dropdown panel hidden" id="historyPanel" role="dialog" aria-modal="false" aria-label="History" tabindex="-1">
       <div class="panel-header">
         <span>History</span>
         <button class="panel-close" id="closeHistory" aria-label="Close history" type="button"></button>
@@ -151,7 +160,7 @@
       <div class="panel-list" id="historyList"></div>
     </section>
 
-    <section class="dropdown panel hidden" id="bookmarksPanel" aria-label="Bookmarks">
+    <section class="dropdown panel hidden" id="bookmarksPanel" role="dialog" aria-modal="false" aria-label="Bookmarks" tabindex="-1">
       <div class="panel-header">
         <span>Bookmarks</span>
         <button class="panel-close" id="closeBookmarks" aria-label="Close bookmarks" type="button"></button>
@@ -217,6 +226,22 @@
           <div class="settings-section-title">Shortcuts</div>
           <div class="shortcut-editor" id="shortcutEditor"></div>
           <button class="primary-action" id="saveShortcuts" type="button">Save Shortcuts</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop hidden" id="downloadModal" role="dialog" aria-modal="true" aria-labelledby="downloadTitle" aria-describedby="downloadMessage">
+      <section class="settings-panel modal-panel-compact">
+        <div class="settings-header">
+          <div>
+            <h2 id="downloadTitle">Download file</h2>
+            <p id="downloadMessage">Choose whether to save this file to Downloads.</p>
+          </div>
+          <button class="panel-close" id="downloadCancelIcon" aria-label="Cancel download" type="button"></button>
+        </div>
+        <div class="error-actions modal-actions">
+          <button class="secondary-action" id="downloadCancel" type="button">Cancel</button>
+          <button class="primary-action" id="downloadConfirm" type="button">Download</button>
         </div>
       </section>
     </div>

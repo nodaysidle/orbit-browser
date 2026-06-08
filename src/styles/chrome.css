@@ -89,9 +89,9 @@
   height: 20px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--line-strong);
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--line));
   border-radius: 50%;
-  color: var(--gold);
+  color: var(--accent);
   font-family: var(--font-mono);
   font-size: 10px;
 }
@@ -103,18 +103,17 @@
 
 .brand-name {
   font-family: var(--font-display);
-  font-size: 17px;
+  font-size: 18px;
   line-height: 1;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .tab-count {
   margin-left: auto;
   color: var(--quiet);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  text-transform: uppercase;
   -webkit-app-region: no-drag;
 }
 
@@ -141,7 +140,6 @@
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
-  /* Slice 1 — approved edge fade masks for overflow affordance (see docs/design/2026-05-29-orbit-ui-ux-polish-approved.md) */
   -webkit-mask-image: linear-gradient(to right, transparent 0, black 14px, black calc(100% - 14px), transparent 100%);
   mask-image: linear-gradient(to right, transparent 0, black 14px, black calc(100% - 14px), transparent 100%);
 }
@@ -150,7 +148,6 @@
   display: none;
 }
 
-/* Subtle overflow hint indicators (additive polish, QA required per approved design) */
 .tabs-scroll.has-overflow-left::before,
 .tabs-scroll.has-overflow-right::after {
   content: '';
@@ -323,6 +320,8 @@
 .nav-btn {
   width: 44px;
   height: 44px;
+  color: color-mix(in srgb, var(--muted) 78%, transparent);
+  background: color-mix(in srgb, var(--button-bg) 58%, transparent);
 }
 
 .new-tab-btn:hover, .nav-btn:hover:not(:disabled) {
@@ -377,10 +376,12 @@
   align-items: center;
   gap: 8px;
   padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--address-inset);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line-strong));
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 58%),
+    color-mix(in srgb, var(--surface-raised) 72%, transparent);
+  box-shadow: var(--address-inset), 0 8px 28px rgba(5, 3, 8, 0.18);
   backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
 }
@@ -421,7 +422,7 @@
 
 .address-wrap:focus-within {
   border-color: var(--focus-border);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--focus-ring), 0 14px 38px rgba(240, 179, 95, 0.14);
 }
 
 .address-status {
@@ -429,7 +430,7 @@
   align-items: center;
   gap: 5px;
   color: var(--quiet);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -456,7 +457,7 @@
 .address-wrap[data-scheme="search"] .address-scheme {
   color: var(--quiet);
   background: rgba(255,255,255,0.04);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 #addressInput {
@@ -657,10 +658,6 @@
   }
 }
 
-/* ========================================
-   Slice 4 — Light theme full visual parity
-   (approved design: make light feel native macOS, not inverted dark)
-   ======================================== */
 :root[data-theme='light'] .titlebar,
 :root[data-theme='light'] .tab-bar,
 :root[data-theme='light'] .nav-bar {

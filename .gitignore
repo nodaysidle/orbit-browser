@@ -14,5 +14,6 @@ output/
 .idea/
 src-tauri/target/
 src-tauri/gen/
+artifacts/
 .opencode/
 .claude/

@@ -13,6 +13,7 @@ test('getShortcutIntent resolves command shortcuts through the action map', asyn
 
   assert.deepEqual(getShortcutIntent({ key: 't', metaKey: true, ctrlKey: false, shiftKey: false }), { type: 'new-tab' })
   assert.deepEqual(getShortcutIntent({ key: '[', metaKey: true, ctrlKey: false, shiftKey: true }), { type: 'previous-tab' })
+  assert.deepEqual(getShortcutIntent({ key: 'ArrowRight', metaKey: true, altKey: true, ctrlKey: false, shiftKey: true }), { type: 'move-active-tab', direction: 1 })
   assert.deepEqual(getShortcutIntent({ key: '3', metaKey: true, ctrlKey: false, shiftKey: false }), { type: 'switch-tab-index', index: 2 })
   assert.deepEqual(getShortcutIntent({ key: 'Tab', metaKey: false, ctrlKey: true, shiftKey: false }), { type: 'next-tab' })
   assert.deepEqual(getShortcutIntent({ key: 'Tab', metaKey: false, ctrlKey: true, shiftKey: true }), { type: 'previous-tab' })
@@ -51,4 +52,19 @@ test('applyProgressToMap marks in-flight navigation without creating tabs', asyn
   assert.equal(next.get('t1').loading, true)
   assert.equal(next.get('t1').title, 'new.example')
   assert.equal(applyProgressToMap(next, { id: 'missing', url: 'https://late.example' }), next)
+})
+
+test('moveTabInMap reorders active tab without dropping tab data', async () => {
+  const { moveTabInMap } = await loadMain()
+  const tabs = new Map([
+    ['a', { id: 'a' }],
+    ['b', { id: 'b' }],
+    ['c', { id: 'c' }],
+  ])
+
+  const { tabs: moved, orderedIds } = await moveTabInMap(tabs, 'b', 1)
+
+  assert.deepEqual(orderedIds, ['a', 'c', 'b'])
+  assert.deepEqual([...moved.keys()], ['a', 'c', 'b'])
+  assert.equal(moved.get('b').id, 'b')
 })

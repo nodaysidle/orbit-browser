@@ -120,8 +120,6 @@ export function bindEvents(actions) {
     if (tab) actions.absorb(actions.switchTab(tab.dataset.tabId))
   })
 
-  // Slice 7 (frontend foundation only) — vanilla tab drag reorder
-  // Full persistence requires explicit Rust command + user "ask" per approved design + AGENTS.md
   let dragSrc = null
   $('tabsContainer').addEventListener('dragstart', e => {
     const tabEl = e.target.closest('.tab')
@@ -194,7 +192,6 @@ export function bindEvents(actions) {
   $('addressInput').addEventListener('keydown', actions.handleAddressKey)
   $('addressInput').addEventListener('focus', event => event.target.select())
 
-  // Slice 1 address copy (button + click-to-copy on preview tooltip area)
   $('btnCopyAddress')?.addEventListener('click', () => actions.copyCurrentAddress?.())
   const addressWrap = $('addressWrap')
   if (addressWrap) {
@@ -210,14 +207,13 @@ export function bindEvents(actions) {
     const del = event.target.closest('[data-delete-shortcut]')
     if (del) {
       const idx = parseInt(del.dataset.deleteShortcut, 10)
-      if (!Number.isNaN(idx)) actions.absorb(() => actions.deleteShortcutAt(idx))
+      if (!Number.isNaN(idx)) actions.deleteShortcutAt(idx)
       return
     }
     const button = event.target.closest('[data-shortcut-url]')
     if (button) actions.absorb(actions.navigate(button.dataset.shortcutUrl))
   })
 
-  // Slice 2 — keyboard arrow navigation on shortcuts (approved design)
   $('shortcutsRow')?.addEventListener('keydown', event => {
     if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return
     const pills = [...$('shortcutsRow').querySelectorAll('.shortcut-btn')]
@@ -235,6 +231,9 @@ export function bindEvents(actions) {
     if (event.key === 'Escape' && !$('settingsModal')?.classList.contains('hidden')) {
       actions.closeSettingsPanel()
     }
+    if (event.key === 'Escape' && !$('downloadModal')?.classList.contains('hidden')) {
+      actions.cancelDownload?.()
+    }
   })
   document.addEventListener('keydown', actions.handleShortcut)
   $('aboutClose')?.addEventListener('click', actions.closeAboutPanel)
@@ -244,6 +243,12 @@ export function bindEvents(actions) {
   $('settingsClose')?.addEventListener('click', actions.closeSettingsPanel)
   $('settingsModal')?.addEventListener('click', event => {
     if (event.target === event.currentTarget) actions.closeSettingsPanel()
+  })
+  $('downloadConfirm')?.addEventListener('click', () => actions.absorb(actions.confirmDownload?.()))
+  $('downloadCancel')?.addEventListener('click', () => actions.cancelDownload?.())
+  $('downloadCancelIcon')?.addEventListener('click', () => actions.cancelDownload?.())
+  $('downloadModal')?.addEventListener('click', event => {
+    if (event.target === event.currentTarget) actions.cancelDownload?.()
   })
   $('settingTheme')?.addEventListener('change', event => actions.absorb(actions.setThemePreference(event.target.value)))
   $('settingSearchEngine')?.addEventListener('change', event => actions.absorb(actions.changeSearchEngine(event.target.value)))
@@ -271,10 +276,10 @@ export function bindEvents(actions) {
     if (event.key === 'Escape') {
       event.preventDefault()
       event.stopPropagation()
-      actions.closeFindBar()
+      actions.absorb(actions.closeFindBar())
     }
   })
   $('findNext').addEventListener('click', () => actions.absorb(actions.findNext()))
   $('findPrev').addEventListener('click', () => actions.absorb(actions.findPrev()))
-  $('findClose').addEventListener('click', actions.closeFindBar)
+  $('findClose').addEventListener('click', () => actions.absorb(actions.closeFindBar()))
 }

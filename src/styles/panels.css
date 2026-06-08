@@ -47,7 +47,6 @@
   color: var(--red);
 }
 
-/* Slice 4 — light theme panel and dropdown polish */
 :root[data-theme='light'] .dropdown,
 :root[data-theme='light'] .dropdown.panel {
   background: rgba(255, 255, 255, 0.98);
@@ -470,6 +469,14 @@
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   animation: panel-open 150ms var(--ease-standard) both;
+}
+
+.modal-panel-compact {
+  width: min(420px, calc(100vw - 48px));
+}
+
+.modal-actions {
+  justify-content: flex-end;
 }
 
 .settings-header {

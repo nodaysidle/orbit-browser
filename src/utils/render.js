@@ -45,7 +45,7 @@ export function renderBookmarksList(list, bookmarks = []) {
 }
 
 export function renderShortcutGrid(container, shortcuts = []) {
-  const tones = ['tone-blue', 'tone-red', 'tone-gold', 'tone-teal']
+  const tones = ['tone-blue', 'tone-violet', 'tone-gold', 'tone-teal']
   container.replaceChildren(...shortcuts.map((shortcut, index) => {
     const btn = el('button', {
       className: `shortcut-btn ${tones[index % tones.length]}`,
@@ -57,7 +57,6 @@ export function renderShortcutGrid(container, shortcuts = []) {
       el('span', { className: 'shortcut-tooltip', text: shortcut.title }),
     ])
 
-    // Slice 2 — inline delete affordance on new-tab shortcuts (approved design, reuses existing save path)
     const del = el('button', {
       className: 'shortcut-delete',
       type: 'button',
@@ -72,7 +71,6 @@ export function renderShortcutGrid(container, shortcuts = []) {
 
 export function renderRecentPages(container, entries = []) {
   if (!entries.length) {
-    // Slice 2 — richer empty state with quick suggestions (approved design)
     const suggestions = [
       { title: 'YouTube', url: 'https://youtube.com' },
       { title: 'Product Hunt', url: 'https://producthunt.com' },
@@ -81,7 +79,7 @@ export function renderRecentPages(container, entries = []) {
     container.replaceChildren(
       el('div', { className: 'recent-empty recent-empty-with-suggestions' }, [
         icon('clock', 16),
-        el('span', { text: 'Recent pages will appear here.' }),
+        el('span', { text: 'Start with a clean orbit.' }),
       ]),
       el('div', { className: 'recent-suggestions' }, suggestions.map(s => 
         el('button', {

@@ -6,8 +6,11 @@
   place-items: center;
   padding: clamp(28px, 5vw, 64px);
   background:
+    radial-gradient(circle at 50% 25%, rgba(255, 199, 106, 0.16), transparent 22%),
+    radial-gradient(circle at 22% 58%, rgba(147, 174, 224, 0.11), transparent 30%),
+    radial-gradient(circle at 78% 62%, rgba(135, 205, 181, 0.09), transparent 31%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 34%),
-    linear-gradient(90deg, rgba(240, 179, 95, 0.08), transparent 26%, transparent 74%, rgba(147, 174, 224, 0.08));
+    linear-gradient(90deg, rgba(240, 179, 95, 0.06), transparent 26%, transparent 74%, rgba(147, 174, 224, 0.07));
 }
 
 .new-tab-page.hidden {
@@ -18,7 +21,7 @@
   width: min(760px, 100%);
   display: grid;
   justify-items: center;
-  gap: 20px;
+  gap: 18px;
   animation: home-enter 240ms var(--ease-standard) both;
 }
 
@@ -28,8 +31,8 @@
 
 .home-orbit {
   position: relative;
-  width: 132px;
-  height: 132px;
+  width: 118px;
+  height: 118px;
   display: grid;
   place-items: center;
   border: 1px solid var(--line);
@@ -44,7 +47,6 @@
   position: absolute;
   border: 1px solid rgba(147, 174, 224, 0.2);
   border-radius: 50%;
-  /* Slice 2 — subtle breathing animation on the distinctive orbiting rings (approved design) */
   animation: orbit-breathe 7.5s var(--ease-standard) infinite;
 }
 
@@ -54,7 +56,7 @@
 
 @keyframes orbit-breathe {
   0%, 100% { transform: scale(1); opacity: 0.95; }
-  50% { transform: scale(1.035); opacity: 0.72; }
+  50% { transform: scale(1.035); opacity: 0.84; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -74,7 +76,6 @@
   font-family: var(--font-display);
   font-size: 22px;
   letter-spacing: 0.02em;
-  /* Subtle breathing on the core to match the rings (Slice 2) */
   animation: orbit-core-breathe 8.2s var(--ease-standard) infinite;
 }
 
@@ -93,10 +94,11 @@
   margin: 0;
   color: var(--text);
   font-family: var(--font-display);
-  font-size: clamp(42px, 7vw, 68px);
-  font-weight: 760;
+  font-size: clamp(46px, 6.2vw, 64px);
+  font-weight: 400;
   line-height: 1;
-  letter-spacing: 0;
+  letter-spacing: -0.025em;
+  text-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
 }
 
 .home-search {
@@ -106,20 +108,21 @@
   align-items: center;
   gap: 12px;
   padding: 0 18px;
-  border: 1px solid var(--line-strong);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--surface-raised) 86%, transparent);
-  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line-strong));
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 58%),
+    color-mix(in srgb, var(--surface-raised) 90%, transparent);
+  box-shadow: var(--shadow), 0 0 0 1px rgba(255, 199, 106, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(22px) saturate(170%);
   -webkit-backdrop-filter: blur(22px) saturate(170%);
 }
 
 .home-search:focus-within {
   border-color: var(--focus-border);
-  box-shadow: var(--shadow), 0 0 0 4px var(--focus-ring);
+  box-shadow: var(--shadow), 0 0 0 4px var(--focus-ring), 0 0 54px rgba(255, 199, 106, 0.13);
 }
 
-/* Slice 4 light theme refinements for new-tab hero surfaces */
 :root[data-theme='light'] .home-orbit {
   background: rgba(255, 255, 255, 0.96);
   border-color: rgba(116, 93, 64, 0.22);
@@ -148,7 +151,7 @@
   color: var(--text);
   font-size: 17px;
   font-weight: 600;
-  letter-spacing: 0;
+  letter-spacing: 0.01em;
 }
 
 #newTabSearchInput::placeholder {
@@ -276,17 +279,18 @@
 .tone-teal { color: var(--teal); }
 .tone-gold { color: var(--gold); }
 .tone-red { color: var(--red); }
+.tone-violet { color: var(--violet); }
 .tone-blue { color: var(--blue); }
 
 .recent-section {
   width: min(680px, 100%);
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .recent-header {
   display: flex;
   justify-content: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   color: var(--quiet);
   font-size: 11px;
   font-weight: 800;
@@ -339,7 +343,7 @@
 
 .recent-card-title {
   font-size: 12px;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .recent-card-url {
@@ -352,10 +356,10 @@
 .recent-empty {
   grid-column: 1 / -1;
   justify-content: center;
-  color: var(--muted);
-  font-size: 12px;
+  color: var(--text);
+  font-size: 13px;
   font-weight: 650;
-  gap: 8px;
+  gap: 10px;
 }
 
 .recent-empty-with-suggestions {
@@ -368,16 +372,17 @@
   justify-content: center;
   gap: 8px;
   flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 .recent-suggestion-pill {
   font-size: 11px;
-  font-weight: 600;
-  padding: 5px 11px;
-  border: 1px solid var(--line);
+  font-weight: 700;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
-  color: var(--muted);
+  background: color-mix(in srgb, var(--surface-raised) 76%, transparent);
+  color: var(--text);
   transition: all var(--motion-fast) var(--ease-standard);
 }
 

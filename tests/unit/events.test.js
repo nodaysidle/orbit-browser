@@ -10,8 +10,10 @@ const IDS = [
   'btnTheme', 'btnBookmark', 'menuHistory', 'menuBookmarks', 'menuSettings',
   'menuClearHistory', 'closeHistory', 'closeBookmarks', 'tabsContainer',
   'historyList', 'bookmarksList', 'recentPages', 'historySearch', 'addressInput',
+  'historyPanel', 'bookmarksPanel',
   'newTabSearchForm', 'shortcutsRow', 'aboutModal', 'aboutClose', 'settingsModal',
-  'settingsClose', 'settingTheme', 'settingSearchEngine', 'settingStartup',
+  'settingsClose', 'downloadModal', 'downloadConfirm', 'downloadCancel', 'downloadCancelIcon',
+  'settingTheme', 'settingSearchEngine', 'settingStartup',
   'saveShortcuts', 'errorRetry', 'errorHome', 'findInput', 'findNext',
   'findPrev', 'findClose', 'findBar',
 ]
@@ -76,6 +78,8 @@ function actions(overrides = {}) {
     retryErrorPage: () => calls.push('retry-error'),
     errorPageHome: () => calls.push('error-home'),
     deleteShortcutAt: id => calls.push(`delete-shortcut:${id}`),
+    confirmDownload: () => calls.push('confirm-download'),
+    cancelDownload: () => calls.push('cancel-download'),
     persistTabOrder: ids => calls.push(`persist-tabs:${ids.join(',')}`),
     goHome: () => calls.push('home'),
     goBack: () => calls.push('back'),
@@ -111,6 +115,18 @@ test('bindEvents delegates dynamic shortcut and recent page clicks', () => {
   nodes.recentPages.dispatchEvent({ type: 'click', target: recent })
 
   assert.deepEqual(bound.calls.slice(-2), ['navigate:https://example.com', 'navigate:https://rust-lang.org'])
+})
+
+test('bindEvents deletes shortcuts without wrapping the action in a thunk', () => {
+  const { document, nodes } = setup()
+  const bound = actions()
+  const deleteButton = document.createElement('button')
+  deleteButton.dataset.deleteShortcut = '0'
+
+  bindEvents(bound)
+  nodes.shortcutsRow.dispatchEvent({ type: 'click', target: deleteButton })
+
+  assert.equal(bound.calls.at(-1), 'delete-shortcut:0')
 })
 
 test('bindEvents persists tab drag order through actions', () => {

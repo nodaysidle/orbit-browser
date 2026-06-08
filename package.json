@@ -1,7 +1,7 @@
 {
   "name": "orbit-browser",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "2.10.1",
+    "playwright": "^1.60.0",
     "vite": "^8.0.14"
   }
 }

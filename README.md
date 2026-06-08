@@ -13,6 +13,30 @@ Minimal chrome, full web. WKWebView child webviews on Tauri 2. No Electron, no t
 
 ---
 
+## Premium Stress-Test Build – June 2026
+
+This build is the current Orbit source and package line for NDI stress testing. The older GitHub package is superseded; release artifacts now target `v1.0.1`. Public notarization is intentionally deferred until after NDI manual stress testing.
+
+### What improved in this pass
+
+- **Dark-by-default fixed** — first-run theme now matches the product claim instead of falling back to a mismatched saved/default state.
+- **Reader Mode upgraded** — replaced the weak CSS-only restyle with a reversible local extraction overlay that targets `article`, `main`, `[role="main"]`, or body fallback and strips noisy page chrome.
+- **Runtime tab reorder proof** — added keyboard active-tab reorder (`Cmd+Opt+Shift+←/→`) and runtime smoke evidence that persisted tab order survives through SQLite session state.
+- **Visual QA added** — new deterministic Playwright QA captures dark/light screenshots, checks overflow, proves visible keyboard focus, and records frame timing.
+- **Smoke coverage expanded** — built-app smoke now covers real navigation, domain blocking, session order, find, reader mode, zoom/reset, reload/stop, and download cancel/no-file behavior.
+- **Docs corrected** — test count and release notes now match the current source gates.
+
+### Current verified quality gates
+
+- `npm test`
+- `npm run check`
+- `scripts/premium-visual-qa.sh`
+- `npm run tauri -- build --bundles dmg`
+- `codesign --verify --deep --strict --verbose=2 src-tauri/target/release/bundle/macos/Orbit.app`
+- `scripts/smoke-runtime.sh` with `ORBIT_APP_PATH` pointed at the built app
+
+---
+
 ## Major Update – May 2026: Comprehensive UI/UX Overhaul
 
 This release represents a major, design-driven improvement to Orbit's daily usability while strictly maintaining the project's core constraints and identity (Vanilla JavaScript only, no new Rust dependencies, preserved frontend module structure, WKWebView child webviews, locked-down CSP, and the distinctive warm amber glassmorphism aesthetic).
@@ -26,7 +50,7 @@ This release represents a major, design-driven improvement to Orbit's daily usab
   - New-tab page elevation (subtle breathing animation on the orbiting rings logo, richer empty states with quick suggestions, inline shortcut deletion)
   - Full light theme visual parity pass (native macOS feel rather than inverted dark)
   - Accessibility, micro-interactions, keyboard discoverability, and motion polish
-  - Frontend foundation for tab drag-to-reorder (persistence layer remains optional pending explicit approval)
+  - Persisted drag-to-reorder plus keyboard tab reorder for accessible runtime QA
 - Five additional high-value features:
   1. **Per-origin zoom memory** — Zoom levels now persist per site
   2. **Smart clean link copying** — Automatically strips common tracking parameters (`utm_*`, `fbclid`, `gclid`, etc.)
@@ -35,7 +59,7 @@ This release represents a major, design-driven improvement to Orbit's daily usab
   5. **Tab hibernation foundation** + supporting infrastructure (`eval_on_tab` command)
 - Multiple verified clean production builds with the app installed to `/Applications/Orbit.app` (previous versions removed before each final install)
 
-All changes were developed with repeated `npm run check` validation (25 JS tests + 60 Rust tests + clippy + production Vite build) and respect the 9.7/10 quality bar.
+All changes were developed with repeated `npm run check` validation (31 JS tests + 69 Rust tests + clippy + production Vite build) and respect the 9.7/10 quality bar.
 
 ### New / Enhanced Keyboard Shortcuts
 
@@ -43,6 +67,7 @@ All changes were developed with repeated `npm run check` validation (25 JS tests
 |----------------|---------------------------|
 | `Cmd+Shift+R`  | Toggle Reader Mode        |
 | `Cmd+=` / `-`  | Zoom in / out (now persists per origin) |
+| `Cmd+Opt+Shift+←/→` | Move active tab left / right |
 | Copy button    | Copies clean link (tracking stripped) |
 
 ---
@@ -88,10 +113,10 @@ Orbit is a native macOS browser built for people who want the web without the ov
 
 ### Download
 
-- GitHub release: https://github.com/nodaysidle/orbit-browser/releases/tag/v1.0.0
-- Direct DMG: https://github.com/nodaysidle/orbit-browser/releases/download/v1.0.0/Orbit-1.0.0-aarch64.dmg
+- GitHub release: https://github.com/nodaysidle/orbit-browser/releases/tag/v1.0.1
+- Direct DMG: https://github.com/nodaysidle/orbit-browser/releases/download/v1.0.1/Orbit-1.0.1-aarch64.dmg
 
-The release build is ad-hoc signed and locally verified. It is not Apple-notarized yet.
+The release build is ad-hoc signed and locally verified for local/internal use. It is not Apple-notarized yet, so external distribution still needs Developer ID signing plus notarization.
 
 
 ### Requirements
@@ -99,6 +124,7 @@ The release build is ad-hoc signed and locally verified. It is not Apple-notariz
 - macOS 14+
 - Node.js 20+
 - Rust stable toolchain (`rustup`)
+- `cargo` available on `PATH` (for rustup installs that is usually `export PATH="$HOME/.cargo/bin:$PATH"`)
 
 ### From source
 

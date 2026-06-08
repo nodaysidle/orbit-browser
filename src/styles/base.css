@@ -27,7 +27,7 @@
   --text: #f1e7d6;
   --muted: #ccbba1;
   --quiet: #9f8f79;
-  --accent: #f0b35f;
+  --accent: #ffc76a;
   --blue: #93aee0;
   --teal: #87cdb5;
   --gold: #f0b35f;
@@ -59,7 +59,7 @@
   --chrome-height: 124px;
   --radius: 12px;
   --font-ui: -apple-system, BlinkMacSystemFont, 'San Francisco', 'Helvetica Neue', sans-serif;
-  --font-display: var(--font-ui);
+  --font-display: 'Instrument Serif', Georgia, serif;
   --font-mono: 'Orbit Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --traffic-close: #ff5f57;
   --traffic-minimize: #febc2e;

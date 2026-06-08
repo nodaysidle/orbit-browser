@@ -1,6 +1,6 @@
 # TODO
 
-Current remaining issues after Orbit Browser handoff iteration 3.
+Current remaining issues after Orbit Browser premium release pass.
 
 ## 1. App is ad-hoc signed, not notarized
 
@@ -24,7 +24,7 @@ xcrun stapler validate /Applications/Orbit.app
 ```
 
 **Status:**
-Backlog / distribution upgrade. Not blocking the current internal release gate.
+Backlog / distribution upgrade. Not blocking the current internal stress-test gate.
 
 ## 2. Rust dependency audit gate
 
@@ -49,16 +49,14 @@ If advisories appear:
 **Status:**
 Release hygiene.
 
-## 3. Automated installed-app smoke coverage
-
-**Issue:**
-`scripts/smoke-test.sh` provides a repeatable manual QA checklist, but it is not automated yet.
-
-**Impact:**
-Manual QA can catch tab/session/keyboard regressions, but future releases still depend on human execution.
-
-**Solution:**
-Replace or extend the checklist with automated coverage using `@tauri-apps/driver` or Playwright once the browser chrome can be driven reliably.
+## 3. Visual QA and tab-reorder smoke coverage
 
 **Status:**
-Backlog / QA automation hardening.
+Resolved for local/internal release QA.
+
+**Evidence:**
+- `scripts/premium-visual-qa.sh` captures dark and light screenshots through Playwright and reports frame-timing/overflow/focus metrics.
+- `scripts/smoke-runtime.sh` now drives keyboard tab reorder in the built app and verifies the persisted session order through SQLite.
+
+**Remaining:**
+Manual human stress testing by NDI before any public release.

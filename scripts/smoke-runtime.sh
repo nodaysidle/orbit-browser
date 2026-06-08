@@ -4,6 +4,7 @@ set -euo pipefail
 APP_PATH="${ORBIT_APP_PATH:-/Applications/Orbit.app}"
 DB_PATH="${ORBIT_DB_PATH:-$HOME/Library/Application Support/com.orbit.browser/orbit.db}"
 GOOD_URL_PATTERN="httpbin.org/get"
+REORDER_URL_PATTERN="www.iana.org/help/example-domains"
 BLOCKED_URL_PATTERN="doubleclick.net/ad"
 
 history_visits() {
@@ -26,6 +27,26 @@ with sqlite3.connect(db_path) as conn:
     except sqlite3.Error:
         count = 0
 print(count)
+PY
+}
+
+setting_value() {
+  local key="$1"
+  if [ ! -f "$DB_PATH" ]; then
+    echo ""
+    return
+  fi
+  python3 - "$DB_PATH" "$key" <<'PY'
+import sqlite3
+import sys
+
+db_path, key = sys.argv[1], sys.argv[2]
+with sqlite3.connect(db_path) as conn:
+    try:
+        row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    except sqlite3.Error:
+        row = None
+print(row[0] if row else "")
 PY
 }
 
@@ -61,7 +82,7 @@ if ! pgrep -x Orbit >/dev/null && ! pgrep -x orbit >/dev/null; then
   exit 1
 fi
 
-echo "Driving runtime smoke flow: new tab, httpbin navigation, blocked domain, close tab..."
+echo "Driving runtime smoke flow: new tabs, navigation, keyboard tab reorder, blocked domain..."
 if ! osascript <<'APPLESCRIPT'
 tell application "Orbit" to activate
 delay 1
@@ -79,14 +100,23 @@ tell application "System Events"
   key code 36
   delay 4
 
+  keystroke "t" using command down
+  delay 0.5
+
+  keystroke "l" using command down
+  delay 0.2
+  keystroke "https://www.iana.org/help/example-domains"
+  key code 36
+  delay 4
+
+  key code 123 using {command down, option down, shift down}
+  delay 1
+
   keystroke "l" using command down
   delay 0.2
   keystroke "https://doubleclick.net/ad"
   key code 36
   delay 2
-
-  keystroke "w" using command down
-  delay 0.5
 end tell
 APPLESCRIPT
 then
@@ -101,6 +131,7 @@ fi
 
 after_good_visits="$(history_visits "$GOOD_URL_PATTERN")"
 after_blocked_visits="$(history_visits "$BLOCKED_URL_PATTERN")"
+session_tabs_after_reorder="$(setting_value "session_tabs")"
 
 if [ "$after_good_visits" -le "$before_good_visits" ]; then
   echo "Runtime smoke failed: httpbin navigation was not recorded in history."
@@ -114,6 +145,38 @@ if [ "$after_blocked_visits" -ne "$before_blocked_visits" ]; then
   exit 1
 fi
 
+if ! python3 - "$session_tabs_after_reorder" <<'PY'
+import json
+import sys
+
+try:
+    tabs = json.loads(sys.argv[1] or "[]")
+except json.JSONDecodeError:
+    sys.exit(1)
+
+joined = "\n".join(tabs)
+if "www.iana.org/help/example-domains" not in joined or "httpbin.org/get" not in joined:
+    sys.exit(1)
+if joined.find("www.iana.org/help/example-domains") > joined.find("httpbin.org/get"):
+    sys.exit(1)
+PY
+then
+  echo "Runtime smoke failed: keyboard tab reorder was not persisted before the original httpbin tab."
+  echo "session_tabs=$session_tabs_after_reorder"
+  exit 1
+fi
+
+echo "Closing active tab after reorder proof..."
+osascript <<'APPLESCRIPT' >/dev/null 2>&1 || true
+tell application "Orbit" to activate
+delay 0.2
+tell application "System Events"
+  tell process "Orbit" to set frontmost to true
+  keystroke "w" using command down
+end tell
+APPLESCRIPT
+
 echo "History evidence: $GOOD_URL_PATTERN visits $before_good_visits -> $after_good_visits"
 echo "Adblock evidence: $BLOCKED_URL_PATTERN visits remained $after_blocked_visits"
+echo "Tab reorder evidence: $REORDER_URL_PATTERN persisted before $GOOD_URL_PATTERN"
 echo "Runtime smoke completed."

@@ -782,18 +782,14 @@ fn validate_tab_order(
 // ── Favicon ────────────────────────────────────────────────────────────────────
 
 /// Construct a best-effort favicon URL from the page URL.
-/// Tries the standard /favicon.ico first, falls back to Google's favicon service.
+/// Uses only the page origin to avoid leaking visited hosts to third parties.
 fn favicon_from_url(page_url: &str) -> Option<String> {
     let parsed = url::Url::parse(page_url).ok()?;
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return None;
+    }
     let origin = parsed.origin().ascii_serialization();
-    // Standard location first — most sites have it
-    let standard = format!("{origin}/favicon.ico");
-    // Google's favicon crawler as reliable fallback (fetches any <link rel="icon">)
-    let google = format!(
-        "https://www.google.com/s2/favicons?domain={}&sz=32",
-        parsed.host_str()?
-    );
-    Some(format!("{standard} {google}"))
+    Some(format!("{origin}/favicon.ico"))
 }
 
 #[tauri::command]
@@ -819,39 +815,105 @@ pub async fn find_in_page(
 
 // ── Zoom ──────────────────────────────────────────────────────────────────────
 
+const MIN_ZOOM_LEVEL: f64 = 0.5;
+const MAX_ZOOM_LEVEL: f64 = 3.0;
+const DEFAULT_ZOOM_LEVEL: f64 = 1.0;
+
 #[tauri::command]
-pub async fn zoom_tab(app: AppHandle, tab_id: String, zoom_in: bool) -> Result<(), String> {
+pub async fn set_tab_zoom(app: AppHandle, tab_id: String, zoom_level: f64) -> Result<f64, String> {
     let webview = app
         .get_webview(&tab_id)
         .ok_or_else(|| format!("webview not found: {tab_id}"))?;
-    let direction = if zoom_in { "+" } else { "-" };
-    let js = format!(
-        "document.body.style.zoom = (parseFloat(document.body.style.zoom || '1') {direction} 0.1).toFixed(1);"
-    );
+    let applied = clamp_zoom_level(zoom_level);
+    let js = zoom_script(applied);
     webview.eval(&js).map_err(|e| e.to_string())?;
-    Ok(())
+    Ok(applied)
 }
 
 #[tauri::command]
 pub async fn reset_zoom(app: AppHandle, tab_id: String) -> Result<(), String> {
-    let webview = app
-        .get_webview(&tab_id)
-        .ok_or_else(|| format!("webview not found: {tab_id}"))?;
-    webview
-        .eval("document.body.style.zoom = '1';")
-        .map_err(|e| e.to_string())?;
+    let _ = set_tab_zoom(app, tab_id, DEFAULT_ZOOM_LEVEL).await?;
     Ok(())
 }
 
-/// Execute arbitrary JavaScript on a specific tab's webview.
-/// Used for Reader Mode, advanced find, and other local enhancements.
 #[tauri::command]
-pub async fn eval_on_tab(app: AppHandle, tab_id: String, script: String) -> Result<(), String> {
+pub async fn set_reader_mode(app: AppHandle, tab_id: String, enabled: bool) -> Result<(), String> {
     let webview = app
         .get_webview(&tab_id)
         .ok_or_else(|| format!("webview not found: {tab_id}"))?;
+    let script = if enabled {
+        reader_mode_enable_script()
+    } else {
+        reader_mode_disable_script()
+    };
     webview.eval(&script).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+fn clamp_zoom_level(value: f64) -> f64 {
+    if !value.is_finite() {
+        return DEFAULT_ZOOM_LEVEL;
+    }
+    (value.clamp(MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL) * 10.0).round() / 10.0
+}
+
+fn zoom_script(zoom_level: f64) -> String {
+    let applied = format!("{:.1}", clamp_zoom_level(zoom_level));
+    format!(
+        "(() => {{ const orbitZoom = '{applied}'; document.documentElement.style.zoom = orbitZoom; if (document.body) document.body.style.zoom = orbitZoom; }})();"
+    )
+}
+
+fn reader_mode_enable_script() -> String {
+    r#"(() => {
+  if (document.getElementById('orbit-reader-mode-root')) return;
+  const source = document.querySelector('article, main, [role="main"]') || document.body;
+  if (!source) return;
+  const clone = source.cloneNode(true);
+  clone.querySelectorAll('script, style, noscript, nav, header, footer, aside, form, button, iframe, [aria-hidden="true"]').forEach(node => node.remove());
+  const titleText = (document.querySelector('h1')?.textContent || document.title || 'Reader Mode').trim();
+  const style = document.createElement('style');
+  style.id = 'orbit-reader-mode-style';
+  style.textContent = `
+    body[data-orbit-reader="true"] { margin: 0 !important; background: #f7f0e3 !important; color: #221a13 !important; }
+    body[data-orbit-reader="true"] > :not(#orbit-reader-mode-root):not(#orbit-reader-mode-style) { display: none !important; }
+    #orbit-reader-mode-root { min-height: 100vh; box-sizing: border-box; padding: clamp(28px, 6vw, 72px) clamp(20px, 7vw, 96px); background: linear-gradient(180deg, #fbf6ec, #f2e7d4); color: #221a13; }
+    #orbit-reader-mode-shell { max-width: 760px; margin: 0 auto; }
+    #orbit-reader-mode-label { margin: 0 0 14px; color: #946326; font: 700 12px/1 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+    #orbit-reader-mode-title { margin: 0 0 28px; color: #1d1510; font: 700 clamp(32px, 5vw, 56px)/1.05 Georgia, serif; letter-spacing: -.025em; }
+    #orbit-reader-mode-content { font: 18px/1.72 Georgia, 'Times New Roman', serif; }
+    #orbit-reader-mode-content :is(p, li, blockquote) { max-width: 72ch; }
+    #orbit-reader-mode-content :is(h1, h2, h3) { margin-top: 1.8em; color: #1d1510; font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.16; }
+    #orbit-reader-mode-content a { color: #75531f; text-decoration-thickness: .08em; text-underline-offset: .18em; }
+    #orbit-reader-mode-content img, #orbit-reader-mode-content video { max-width: 100%; height: auto; border-radius: 14px; }
+    #orbit-reader-mode-content pre { overflow: auto; padding: 14px; border-radius: 12px; background: #221a13; color: #f7f0e3; }
+    #orbit-reader-mode-content code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  `;
+  const root = document.createElement('div');
+  root.id = 'orbit-reader-mode-root';
+  const shell = document.createElement('main');
+  shell.id = 'orbit-reader-mode-shell';
+  const label = document.createElement('p');
+  label.id = 'orbit-reader-mode-label';
+  label.textContent = 'Orbit Reader Mode';
+  const title = document.createElement('h1');
+  title.id = 'orbit-reader-mode-title';
+  title.textContent = titleText;
+  const content = document.createElement('section');
+  content.id = 'orbit-reader-mode-content';
+  content.appendChild(clone);
+  shell.append(label, title, content);
+  root.appendChild(shell);
+  document.body.dataset.orbitReader = 'true';
+  document.head.appendChild(style);
+  document.body.appendChild(root);
+})();"#
+    .to_string()
+}
+
+fn reader_mode_disable_script() -> String {
+    "(() => { delete document.body.dataset.orbitReader; document.getElementById('orbit-reader-mode-root')?.remove(); document.getElementById('orbit-reader-mode-style')?.remove(); })();"
+        .to_string()
 }
 
 #[cfg(test)]
@@ -915,7 +977,7 @@ mod tests {
     fn test_favicon_from_url_basic() {
         let result = favicon_from_url("https://example.com/page").unwrap();
         assert!(result.contains("example.com/favicon.ico"));
-        assert!(result.contains("google.com/s2/favicons"));
+        assert!(!result.contains("google.com/s2/favicons"));
     }
 
     #[test]
@@ -928,6 +990,24 @@ mod tests {
     fn test_favicon_from_url_https() {
         let result = favicon_from_url("https://github.com/rust-lang/rust").unwrap();
         assert!(result.contains("github.com/favicon.ico"));
+    }
+
+    #[test]
+    fn test_zoom_level_is_clamped_and_rounded() {
+        assert_eq!(clamp_zoom_level(1.04), 1.0);
+        assert_eq!(clamp_zoom_level(1.05), 1.1);
+        assert_eq!(clamp_zoom_level(99.0), MAX_ZOOM_LEVEL);
+        assert_eq!(clamp_zoom_level(f64::NAN), DEFAULT_ZOOM_LEVEL);
+    }
+
+    #[test]
+    fn test_reader_mode_scripts_use_fixed_style_id() {
+        let enable = reader_mode_enable_script();
+        let disable = reader_mode_disable_script();
+        assert!(enable.contains("orbit-reader-mode-root"));
+        assert!(enable.contains("Orbit Reader Mode"));
+        assert!(enable.contains("article, main"));
+        assert!(disable.contains("orbit-reader-mode-style"));
     }
 
     #[test]

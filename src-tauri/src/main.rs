@@ -15,9 +15,9 @@ use layout::{resize_active_webview, resize_active_webview_to, MAX_OVERLAY_HEIGHT
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tabs::{
-    close_tab, create_tab, eval_on_tab, find_in_page, get_active_tab, get_tabs, go_back,
-    go_forward, go_home_tab, navigate_tab, reload_tab, reorder_tabs, reset_zoom, stop_tab,
-    switch_tab, zoom_tab,
+    close_tab, create_tab, find_in_page, get_active_tab, get_tabs, go_back, go_forward,
+    go_home_tab, navigate_tab, reload_tab, reorder_tabs, reset_zoom, set_reader_mode, set_tab_zoom,
+    stop_tab, switch_tab,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{Emitter, Manager};
@@ -480,9 +480,9 @@ fn main() {
             get_active_tab,
             reorder_tabs,
             find_in_page,
-            zoom_tab,
+            set_tab_zoom,
             reset_zoom,
-            eval_on_tab,
+            set_reader_mode,
             add_bookmark,
             get_bookmarks,
             delete_bookmark,
