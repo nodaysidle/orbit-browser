@@ -5,50 +5,49 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: 'Instrument Serif';
-  src: url('../fonts/InstrumentSerif-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-display: swap;
-}
-
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
 :root {
+  color-scheme: dark;
   --bg: #141017;
   --chrome: rgba(30, 24, 35, 0.88);
   --chrome-soft: rgba(38, 31, 45, 0.82);
   --surface: rgba(43, 36, 51, 0.86);
   --surface-raised: rgba(52, 44, 61, 0.92);
-  --line: rgba(240, 214, 179, 0.22);
-  --line-strong: rgba(240, 214, 179, 0.34);
+  --line: rgba(227, 238, 207, 0.18);
+  --line-strong: rgba(227, 238, 207, 0.3);
   --text: #f1e7d6;
   --muted: #ccbba1;
   --quiet: #9f8f79;
-  --accent: #ffc76a;
+  --volt: #C8FF00;
+  --accent: #C8FF00;
+  --accent-text: #d9ff57;
+  --accent-soft: rgba(200, 255, 0, 0.12);
+  --accent-line: rgba(200, 255, 0, 0.34);
+  --accent-glow: rgba(200, 255, 0, 0.16);
   --blue: #93aee0;
   --teal: #87cdb5;
-  --gold: #f0b35f;
+  --gold: #C8FF00;
   --red: #ff9388;
   --violet: #bfa9eb;
   --shadow: 0 18px 42px rgba(6, 4, 10, 0.42);
   --app-gradient:
-    linear-gradient(145deg, rgba(65, 51, 37, 0.22), transparent 34%),
+    linear-gradient(145deg, rgba(54, 69, 14, 0.18), transparent 34%),
     linear-gradient(235deg, rgba(70, 88, 114, 0.16), transparent 42%),
     linear-gradient(180deg, rgba(25, 20, 31, 0.98), rgba(20, 16, 23, 1) 58%);
   --chrome-alpha: rgba(33, 27, 39, 0.9);
-  --chrome-hover: rgba(240, 214, 179, 0.12);
-  --button-bg: rgba(240, 214, 179, 0.08);
-  --focus-ring: rgba(240, 179, 95, 0.6);
-  --focus-border: rgba(240, 179, 95, 0.7);
+  --chrome-hover: rgba(227, 238, 207, 0.1);
+  --button-bg: rgba(227, 238, 207, 0.07);
+  --focus-ring: rgba(200, 255, 0, 0.32);
+  --focus-border: rgba(200, 255, 0, 0.58);
   --tab-shadow: 0 12px 26px rgba(7, 5, 11, 0.42);
   --address-inset: inset 0 1px 0 rgba(255, 255, 255, 0.07);
   --danger-soft: rgba(255, 147, 136, 0.18);
-  --bookmark-soft: rgba(240, 179, 95, 0.18);
-  --home-core-bg: #f4e6cf;
-  --home-core-text: #291f19;
+  --bookmark-soft: rgba(200, 255, 0, 0.13);
+  --home-core-bg: #C8FF00;
+  --home-core-text: #151a08;
   --shortcut-shadow: 0 12px 30px rgba(8, 6, 13, 0.28);
   --panel-focus-bg: rgba(66, 56, 78, 0.84);
   --glass-blur: 10px;
@@ -59,7 +58,7 @@
   --chrome-height: 124px;
   --radius: 12px;
   --font-ui: -apple-system, BlinkMacSystemFont, 'San Francisco', 'Helvetica Neue', sans-serif;
-  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-display: var(--font-ui);
   --font-mono: 'Orbit Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --traffic-close: #ff5f57;
   --traffic-minimize: #febc2e;
@@ -70,6 +69,7 @@
 }
 
 :root[data-theme='light'] {
+  color-scheme: light;
   --bg: #f4eee2;
   --chrome: rgba(255, 251, 246, 0.9);
   --chrome-soft: rgba(251, 246, 237, 0.92);
@@ -80,28 +80,32 @@
   --text: #2f2119;
   --muted: #665140;
   --quiet: #856d57;
-  --accent: #b47022;
+  --accent: #C8FF00;
+  --accent-text: #4d6500;
+  --accent-soft: rgba(200, 255, 0, 0.18);
+  --accent-line: rgba(111, 145, 0, 0.32);
+  --accent-glow: rgba(111, 145, 0, 0.1);
   --blue: #3d5f8e;
   --teal: #2f7968;
-  --gold: #b47022;
+  --gold: #5c7600;
   --red: #b54d45;
   --violet: #664f99;
   --shadow: 0 12px 28px rgba(66, 45, 28, 0.14);
   --app-gradient:
-    linear-gradient(145deg, rgba(180, 112, 34, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(200, 255, 0, 0.1), transparent 34%),
     linear-gradient(235deg, rgba(72, 102, 145, 0.1), transparent 42%),
     linear-gradient(180deg, rgba(250, 243, 232, 0.98), rgba(244, 238, 226, 1) 56%);
   --chrome-alpha: rgba(255, 251, 246, 0.9);
   --chrome-hover: rgba(116, 93, 64, 0.08);
   --button-bg: rgba(255, 251, 246, 0.94);
-  --focus-ring: rgba(180, 112, 34, 0.55);
-  --focus-border: rgba(180, 112, 34, 0.62);
+  --focus-ring: rgba(111, 145, 0, 0.28);
+  --focus-border: rgba(111, 145, 0, 0.5);
   --tab-shadow: 0 8px 20px rgba(84, 59, 37, 0.14);
   --address-inset: inset 0 1px 0 rgba(255, 255, 255, 0.92);
   --danger-soft: rgba(181, 77, 69, 0.12);
-  --bookmark-soft: rgba(180, 112, 34, 0.15);
-  --home-core-bg: #2f2119;
-  --home-core-text: #ffffff;
+  --bookmark-soft: rgba(200, 255, 0, 0.18);
+  --home-core-bg: #C8FF00;
+  --home-core-text: #151a08;
   --shortcut-shadow: 0 8px 20px rgba(95, 67, 42, 0.14);
   --panel-focus-bg: rgba(255, 250, 243, 1);
   --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.84);
@@ -120,7 +124,6 @@ html, body {
   line-height: 1.35;
   user-select: text;
   -webkit-font-smoothing: antialiased;
-  color-scheme: light dark;
 }
 
 ::-webkit-scrollbar {

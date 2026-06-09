@@ -30,7 +30,7 @@
 
 .dropdown-item:hover {
   background: var(--chrome-soft);
-  color: var(--gold);
+  color: var(--accent-text);
 }
 
 .dropdown-item:active {
@@ -276,13 +276,13 @@
 
 .toast-region {
   position: absolute;
-  top: 40px;
-  right: 56px;
+  top: calc(var(--chrome-height) + 12px);
+  right: 16px;
   bottom: auto;
   z-index: 500;
   display: grid;
   gap: 8px;
-  width: min(340px, calc(100vw - 96px));
+  width: min(340px, calc(100vw - 32px));
 }
 
 .toast {
@@ -298,8 +298,10 @@
   font-weight: 600;
   letter-spacing: 0.01em;
   opacity: 0;
-  transform: translateX(18px);
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transform: translateY(-8px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
 .toast-actions-wrap {
@@ -344,12 +346,12 @@
 }
 
 .toast-action-primary {
-  border-color: rgba(240, 179, 95, 0.38);
-  color: var(--accent);
+  border-color: var(--accent-line);
+  color: var(--accent-text);
 }
 
 .toast-action-primary:hover {
-  border-color: rgba(240, 179, 95, 0.62);
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line-strong));
 }
 
 .toast.visible {
@@ -358,8 +360,8 @@
 }
 
 .toast-success {
-  border-color: rgba(240, 179, 95, 0.28);
-  color: var(--accent);
+  border-color: var(--accent-line);
+  color: var(--accent-text);
 }
 
 .toast-info {
@@ -594,9 +596,10 @@
   border: 1px solid var(--line-strong);
   border-radius: 14px;
   background: var(--glass-pane);
-  color: var(--gold);
+  color: var(--accent-text);
   font-family: var(--font-display);
   font-size: 28px;
+  font-weight: 800;
 }
 
 .about-copy h2,

@@ -306,7 +306,7 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
     0 8px 22px rgba(0, 0, 0, 0.2),
-    0 0 0 1px rgba(255, 199, 106, 0.05);
+    0 0 0 1px var(--accent-soft);
 }
 
 .new-tab-btn svg {
@@ -355,7 +355,7 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
     0 10px 26px rgba(0, 0, 0, 0.24),
-    0 0 24px rgba(255, 199, 106, 0.12);
+    0 0 24px var(--accent-glow);
 }
 
 .new-tab-btn:active,
@@ -378,15 +378,15 @@
 }
 
 .nav-btn.bookmarked {
-  color: var(--gold);
-  border-color: rgba(240, 179, 95, 0.42);
+  color: var(--accent-text);
+  border-color: var(--accent-line);
   background: var(--bookmark-soft);
 }
 
 .nav-btn.loading {
-  color: var(--gold);
-  border-color: rgba(240, 179, 95, 0.48);
-  background: rgba(240, 179, 95, 0.12);
+  color: var(--accent-text);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
 }
 
 .nav-btn.loading svg {
@@ -437,6 +437,7 @@
   white-space: nowrap;
 }
 
+.address-wrap:not([data-url-preview])::after,
 .address-wrap[data-url-preview='']::after {
   display: none;
 }
@@ -449,7 +450,7 @@
 
 .address-wrap:focus-within {
   border-color: var(--focus-border);
-  box-shadow: 0 0 0 3px var(--focus-ring), 0 14px 38px rgba(240, 179, 95, 0.14);
+  box-shadow: 0 0 0 3px var(--focus-ring), 0 14px 38px var(--accent-glow);
 }
 
 .address-status {
@@ -490,6 +491,7 @@
 #addressInput {
   width: 100%;
   height: 100%;
+  padding-right: 30px;
   color: var(--text);
   font-size: 14px;
   font-weight: 500;
@@ -516,10 +518,16 @@
   place-items: center;
   border-radius: 6px;
   color: var(--quiet);
-  background: transparent;
+  background: color-mix(in srgb, var(--button-bg) 70%, transparent);
+  opacity: 0.48;
+  pointer-events: auto;
+  transition: opacity var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+
+.address-wrap:not([data-url-preview]) .address-copy-btn,
+.address-wrap[data-url-preview=''] .address-copy-btn {
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
 }
 
 .address-wrap:hover .address-copy-btn,
@@ -594,7 +602,7 @@
   width: 34%;
   border-radius: 999px;
   background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  box-shadow: 0 0 18px rgba(240, 179, 95, 0.42);
+  box-shadow: 0 0 18px var(--accent-glow);
   animation: orbit-progress 1.2s var(--ease-standard) infinite;
 }
 
