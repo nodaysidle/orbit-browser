@@ -107,7 +107,7 @@ export function bindEvents(actions) {
   $('menuHistory').addEventListener('click', () => actions.absorb(actions.openHistoryPanel()))
   $('menuBookmarks').addEventListener('click', () => actions.absorb(actions.openBookmarksPanel()))
   $('menuSettings')?.addEventListener('click', actions.openSettingsPanel)
-  $('menuClearHistory').addEventListener('click', () => actions.absorb(actions.clearHistory()))
+  $('menuClearHistory').addEventListener('click', () => actions.requestClearHistory?.())
   $('closeHistory').addEventListener('click', actions.closeAllPanels)
   $('closeBookmarks').addEventListener('click', actions.closeAllPanels)
 

@@ -22,7 +22,16 @@ export function showToast(message, tone = 'error') {
   }, TOAST_DURATION_MS)
 }
 
-export function showConfirmToast({ message, confirmLabel = 'Download', cancelLabel = 'Cancel', onConfirm, onCancel }) {
+export function showConfirmToast({
+  message,
+  confirmLabel = 'Download',
+  cancelLabel = 'Cancel',
+  focusConfirm = false,
+  focusCancel = false,
+  returnFocusTo = null,
+  onConfirm,
+  onCancel,
+}) {
   const region = document.getElementById('toastRegion')
   if (!region || !message) return
 
@@ -34,22 +43,47 @@ export function showConfirmToast({ message, confirmLabel = 'Download', cancelLab
   toast.replaceChildren(content, actions)
   region.append(toast)
   requestAnimationFrame(() => toast.classList.add('visible'))
+  if (focusConfirm) requestAnimationFrame(() => confirm.focus())
+  if (focusCancel) requestAnimationFrame(() => cancel.focus())
 
+  let closed = false
   const close = () => {
+    if (closed) return
+    closed = true
+    const shouldRestoreFocus = returnFocusTo && isInside(toast, document.activeElement)
     toast.classList.remove('visible')
-    window.setTimeout(() => toast.remove(), TOAST_FADE_MS)
+    window.setTimeout(() => {
+      toast.remove()
+      if (shouldRestoreFocus) returnFocusTo.focus?.()
+    }, TOAST_FADE_MS)
+  }
+
+  const cancelToast = () => {
+    try { onCancel?.() } finally { close() }
   }
 
   confirm.addEventListener('click', () => {
     try { onConfirm?.() } finally { close() }
   })
-  cancel.addEventListener('click', () => {
-    try { onCancel?.() } finally { close() }
+  cancel.addEventListener('click', cancelToast)
+  toast.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return
+    event.preventDefault()
+    cancelToast()
   })
 
   window.setTimeout(() => {
     if (toast.isConnected) close()
   }, CONFIRM_TOAST_TIMEOUT_MS)
+}
+
+function isInside(parent, child) {
+  let node = child
+  while (node) {
+    if (node === parent) return true
+    node = node.parentElement
+  }
+  return false
 }
 
 export function installUnhandledRejectionHandler() {

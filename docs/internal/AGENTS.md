@@ -1,3 +1,42 @@
+# docs/internal — Internal Agent Docs
+
+## Purpose
+
+Owns internal-only operational documentation for agents working on Orbit: audits, build prompts, handoffs, project brief, and implementation/review instructions.
+
+## Ownership
+
+- `PROJECT_BRIEF.md` — internal product/project brief.
+- `AUDIT.md` / `AUDIT_PROMPTS.md` — audit findings and reusable audit prompt material.
+- `CODEX_BUILD_PROMPT.md` — build prompt material for Codex-style implementation sessions.
+- `HERMES_HANDOFF.md` — handoff context for Hermes/agent continuity.
+- `README.md` — internal docs index.
+
+## Local Contracts
+
+- Internal docs are not source of truth over live repo files, root `AGENTS.md`, or child `AGENTS.md` contracts.
+- Do not paste secrets, raw tokens, private credentials, or local personal data.
+- Keep prompts actionable and bounded: exact scope, forbidden actions, verification commands, expected output.
+- Mark stale audit facts when superseded; do not leave old ratings or claims that conflict with live evidence.
+- NODAYSIDLE quality bar and project constraints from root `AGENTS.md` apply here.
+
+## Work Guidance
+
+- Use this folder for agent-facing guidance, not task diaries.
+- If a prompt changes how agents should edit code, reflect the durable contract in the relevant `AGENTS.md` instead of hiding it only here.
+- If a handoff mentions release state, verify against GitHub/repo state before treating it as current.
+
+## Verification
+
+- Docs-only: read changed files back and inspect `git diff --name-only`.
+- Claims about builds/releases: verify with live command output before writing.
+
+## Child DOX Index
+
+None.
+
+## Existing Local Notes (Preserved from pre-DOX docs/internal/AGENTS.md)
+
 ## Stack
 Tauri 2.x — Rust backend + Vanilla JS frontend (macOS browser)
 

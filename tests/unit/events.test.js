@@ -15,7 +15,7 @@ const IDS = [
   'settingsClose', 'downloadModal', 'downloadConfirm', 'downloadCancel', 'downloadCancelIcon',
   'settingTheme', 'settingSearchEngine', 'settingStartup',
   'saveShortcuts', 'errorRetry', 'errorHome', 'findInput', 'findNext',
-  'findPrev', 'findClose', 'findBar',
+  'findPrev', 'findClose', 'findBar', 'toastRegion',
 ]
 
 function setup() {
@@ -60,6 +60,7 @@ function actions(overrides = {}) {
     toggleBookmark: () => calls.push('bookmark'),
     toggleTheme: () => calls.push('theme'),
     clearHistory: () => calls.push('clear-history'),
+    requestClearHistory: () => calls.push('request-clear-history'),
     closeFindBar: () => calls.push('close-find'),
     findNext: () => calls.push('find-next'),
     findPrev: () => calls.push('find-prev'),
@@ -207,4 +208,30 @@ test('bindEvents persists settings changes through actions', () => {
   nodes.saveShortcuts.dispatchEvent({ type: 'click' })
 
   assert.deepEqual(bound.calls.slice(-3), ['theme:light', 'search:brave', 'save-shortcuts'])
+})
+
+test('clear history menu asks for confirmation before clearing', () => {
+  const { document, nodes } = setup()
+  const bound = actions({
+    requestClearHistory: () => {
+      nodes.toastRegion.replaceChildren()
+      const toast = document.createElement('div')
+      const confirm = document.createElement('button')
+      confirm.className = 'toast-action-primary'
+      confirm.textContent = 'Clear History'
+      confirm.addEventListener('click', () => bound.clearHistory())
+      toast.append(confirm)
+      nodes.toastRegion.append(toast)
+    },
+  })
+
+  bindEvents(bound)
+  nodes.menuClearHistory.dispatchEvent({ type: 'click' })
+
+  assert.equal(bound.calls.includes('clear-history'), false)
+  assert.equal(nodes.toastRegion.querySelector('.toast-action-primary').textContent, 'Clear History')
+
+  nodes.toastRegion.querySelector('.toast-action-primary').dispatchEvent({ type: 'click' })
+
+  assert.equal(bound.calls.at(-1), 'clear-history')
 })

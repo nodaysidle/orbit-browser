@@ -8,7 +8,7 @@ import { createFindController } from './find.js'
 import { createShortcutHandlers, getShortcutIntent as resolveShortcutIntent, runShortcutIntent as dispatchShortcutIntent } from './shortcuts.js'
 import { icon } from './utils/dom.js'
 import { closeModal, openModal } from './utils/modal.js'
-import { installUnhandledRejectionHandler, logError, showToast } from './utils/toast.js'
+import { installUnhandledRejectionHandler, logError, showConfirmToast, showToast } from './utils/toast.js'
 import {
   renderBookmarksList,
   renderHistoryList,
@@ -64,10 +64,10 @@ const MAX_ZOOM_LEVEL = 3.0
 const ZOOM_STEP = 0.1
 const VISUAL_QA_PARAM = 'orbit-visual-qa'
 const DEFAULT_SHORTCUTS = [
-  { title: 'NODAYSIDLE GitHub', url: 'https://github.com/nodaysidle' },
-  { title: 'YouTube', url: 'https://youtube.com' },
-  { title: 'Product Hunt', url: 'https://producthunt.com' },
-  { title: 'Telegram Web', url: 'https://web.telegram.org' },
+  { title: 'NODAYSIDLE', url: 'https://github.com/nodaysidle' },
+  { title: 'Tauri Docs', url: 'https://tauri.app' },
+  { title: 'Rust Docs', url: 'https://doc.rust-lang.org' },
+  { title: 'MDN Web Docs', url: 'https://developer.mozilla.org' },
 ]
 
 const VISUAL_QA_TABS = [
@@ -281,6 +281,7 @@ function applyTheme(value) {
   state.resolvedTheme = resolvedThemeFor(state.theme)
   document.documentElement.dataset.theme = state.resolvedTheme
   document.documentElement.dataset.themePreference = state.theme
+  document.documentElement.style.colorScheme = state.resolvedTheme
   setIconButton($('btnTheme'), themeIcon(state.theme), 18)
   $('btnTheme').setAttribute('aria-label', themeButtonLabel())
   $('btnTheme').title = themeButtonLabel()
@@ -981,6 +982,19 @@ async function clearHistory() {
   showToast('History cleared', 'success')
 }
 
+function requestClearHistory() {
+  closeAllPanels()
+  showConfirmToast({
+    message: 'Clear local browsing history from this Mac?',
+    confirmLabel: 'Clear History',
+    cancelLabel: 'Keep History',
+    focusCancel: true,
+    returnFocusTo: $('btnMenu'),
+    onConfirm: () => absorb(clearHistory()),
+    onCancel: () => showToast('History kept', 'info'),
+  })
+}
+
 async function deleteBookmark(id) {
   await command('delete_bookmark', { id }, 'Could not delete bookmark')
   await openBookmarksPanel()
@@ -1257,7 +1271,7 @@ async function init() {
     $, absorb, win, closeAllPanels, closeTab, createTab, deleteBookmark,
     handleAddressKey, handleShortcut, navigate, openBookmarksPanel,
     openHistoryPanel, queueBrowserViewSync, queueHistorySearch, cleanupListeners,
-    switchTab, toggleBookmark, toggleTheme, clearHistory,
+    switchTab, toggleBookmark, toggleTheme, clearHistory, requestClearHistory,
     closeFindBar, findNext, findPrev,
     updateOverlay, closeAboutPanel, openSettingsPanel, closeSettingsPanel,
     setThemePreference, changeSearchEngine, changeStartupBehavior,

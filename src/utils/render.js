@@ -72,9 +72,9 @@ export function renderShortcutGrid(container, shortcuts = []) {
 export function renderRecentPages(container, entries = []) {
   if (!entries.length) {
     const suggestions = [
-      { title: 'YouTube', url: 'https://youtube.com' },
-      { title: 'Product Hunt', url: 'https://producthunt.com' },
       { title: 'NODAYSIDLE', url: 'https://github.com/nodaysidle' },
+      { title: 'Tauri Docs', url: 'https://tauri.app' },
+      { title: 'MDN Web Docs', url: 'https://developer.mozilla.org' },
     ]
     container.replaceChildren(
       el('div', { className: 'recent-empty recent-empty-with-suggestions' }, [

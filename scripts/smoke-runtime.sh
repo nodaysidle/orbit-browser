@@ -154,12 +154,12 @@ try:
 except json.JSONDecodeError:
     sys.exit(1)
 
-joined = "\n".join(tabs)
-last_iana = joined.rfind("www.iana.org/help/example-domains")
-last_httpbin = joined.rfind("httpbin.org/get")
-if last_iana == -1 or last_httpbin == -1:
+normalized = [str(tab).lower() for tab in tabs]
+iana_indices = [index for index, value in enumerate(normalized) if "www.iana.org/help/example-domains" in value]
+httpbin_indices = [index for index, value in enumerate(normalized) if "httpbin.org/get" in value]
+if not iana_indices or not httpbin_indices:
     sys.exit(1)
-if last_iana > last_httpbin:
+if not any(iana_index < httpbin_index for iana_index in iana_indices for httpbin_index in httpbin_indices):
     sys.exit(1)
 PY
 then
