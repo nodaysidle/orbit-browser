@@ -57,24 +57,73 @@ Create child `AGENTS.md` files only for durable boundaries with distinct ownersh
 
 Package scripts are in `package.json`; verify commands from the live file before using them.
 
-## Verification Commands
+## Safety and Approval Policy
 
-Use the smallest command that proves the change, then broader gates when feasible.
+Agents must stop and request explicit NDI approval before any action that can destroy, expose, publish, spend, deploy, or permanently alter project state.
 
-- npm test
-- npm run build
-- npm run check
-- npm run tauri -- build
-- npm run qa:visual
-- scripts/premium-visual-qa.sh
-- npm run tauri -- build --bundles dmg
-- codesign --verify --deep --strict --verbose=2 src-tauri/target/release/bundle/macos/Orbit.app
-- scripts/smoke-runtime.sh with `ORBIT_APP_PATH` pointed at the built app when runtime/browser behavior changes.
+Approval required for:
+- deleting files, directories, branches, tags, releases, backups, databases, caches, or generated assets outside normal build output
+- force-push, history rewrite, branch deletion, tag deletion, or main-branch merges
+- publishing releases, packages, installers, app bundles, websites, docs, or public artifacts
+- deployment changes, production config changes, DNS changes, Vercel/Supabase/cloud settings, or webhook changes
+- credential, token, signing, notarization, keychain, permission, entitlement, or billing changes
+- installing/moving artifacts outside the repo, including `/Applications`, unless the task explicitly includes install/package verification
+- dependency upgrades, framework swaps, runtime changes, or generated migration scripts
+- destructive cleanup commands such as `rm -rf`, `git clean`, `reset --hard`, database wipes, or cache wipes without named scope
+
+Allowed without extra approval when already within the requested task:
+- reading files
+- running non-destructive checks
+- editing approved instruction files
+- running format/lint/test/build commands that do not publish or deploy
+- creating repo-local Markdown documentation within the approved scope
+
+If unsure, stop and ask. Do not guess.
+
+## Verification Ladder
+
+Run the lowest sufficient rung for the change. Do not claim completion without recording the command and result.
+
+1. **Read-only audit**
+   - `git status --short`
+   - Read this root `AGENTS.md`, the nearest child `AGENTS.md`, and the target files.
+   - Do not modify files.
+
+2. **Unit / fast checks**
+   - `npm test`
+   - UI visual check when frontend polish changes: `npm run qa:visual`
+
+3. **Full build / static checks**
+   - `npm run build`
+   - `PATH="$HOME/.cargo/bin:$PATH" npm run check`
+
+4. **Runtime smoke**
+   - `ORBIT_APP_PATH=/Applications/Orbit.app bash scripts/smoke-runtime.sh` for installed-app runtime/browser behavior.
+   - Use the freshly built app path instead of `/Applications/Orbit.app` when smoking a non-installed build.
+
+5. **Package / install**
+   - `npm run tauri -- build --bundles dmg`
+   - `codesign --verify --deep --strict --verbose=2 src-tauri/target/release/bundle/macos/Orbit.app`
+   - Installing to `/Applications/Orbit.app` requires explicit NDI approval.
+
+6. **Release gate**
+   - Pushing branches is allowed only when requested.
+   - Merging to `main`, publishing GitHub Releases, notarization, signing changes, deployment changes, credential changes, and destructive cleanup require explicit NDI approval.
 
 For docs-only `AGENTS.md` changes, verify with:
 - `find . -name AGENTS.md -not -path './.git/*' -not -path './node_modules/*' -not -path './src-tauri/target/*' -not -path './target/*' -not -path './.build/*' | sort`
 - `git status --short`
 - confirm no product source/config files changed unless explicitly intended.
+
+## Prompt Commands
+
+Reusable repo-local agent prompts live in `prompts/`.
+
+- `prompts/repo-orientation.md` — read-only repo onboarding and command discovery.
+- `prompts/dox-audit.md` — read-only DOX/AGENTS hierarchy audit.
+- `prompts/release-check.md` — read-only release-readiness audit.
+
+Prompt files are instruction templates, not executable scripts. Keep them short, current, and verified against live repo commands.
 
 ## Child DOX Index
 
