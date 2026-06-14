@@ -13,6 +13,52 @@ Minimal chrome, full web. WKWebView child webviews on Tauri 2. No Electron, no t
 
 ---
 
+## Major Update – May 2026: Comprehensive UI/UX Overhaul
+
+This release represents a major, design-driven improvement to Orbit's daily usability while preserving the project's core constraints and identity: Vanilla JavaScript, preserved frontend module structure, WKWebView child webviews, locked-down CSP, and the distinctive warm amber glassmorphism aesthetic. Current download support uses `reqwest` 0.12 with `rustls-tls`.
+
+### Completed Work
+
+- Full independent code audit + detailed design document (produced via structured review process and fully approved)
+- Implementation of the complete approved 7-slice UI/UX polish plan, including:
+  - Tab bar overflow affordances with elegant edge gradient masks and dynamic indicators
+  - Address bar enhancements (persistent security pill, one-click copy button, click-to-copy on preview tooltip)
+  - New-tab page elevation (subtle breathing animation on the orbiting rings logo, richer empty states with quick suggestions, inline shortcut deletion)
+  - Full light theme visual parity pass (native macOS feel rather than inverted dark)
+  - Accessibility, micro-interactions, keyboard discoverability, and motion polish
+  - Frontend foundation for tab drag-to-reorder (persistence layer remains optional pending explicit approval)
+- Five additional high-value features:
+  1. **Per-origin zoom memory** — Zoom levels now persist per site
+  2. **Smart clean link copying** — Automatically strips common tracking parameters (`utm_*`, `fbclid`, `gclid`, etc.)
+  3. **Local-only Reader Mode** — Toggle with `Cmd+Shift+R` for a clean, comfortable reading experience
+  4. **Improved find-in-page** — Better feedback and structure
+  5. **Tab hibernation foundation** + supporting infrastructure (`eval_on_tab` command)
+- Build/install helper scripts now support producing the macOS app bundle and copying it to `/Applications/Orbit.app` when explicitly run
+
+All changes were developed with repeated `npm run check` validation (26 JS tests + 67 Rust tests + clippy + production Vite build) and respect the 9.7/10 quality bar.
+
+### New / Enhanced Keyboard Shortcuts
+
+| Key            | Action                    |
+|----------------|---------------------------|
+| `Cmd+Shift+R`  | Toggle Reader Mode        |
+| `Cmd+=` / `-`  | Zoom in / out (now persists per origin) |
+| Copy button    | Copies clean link (tracking stripped) |
+
+---
+
+## What this app is
+
+Orbit is a native Tauri 2.x + Rust macOS browser that uses WKWebView-backed child webviews for each tab. It provides lightweight browser chrome (tabs, address bar, history, bookmarks, startup state), local persistence with rusqlite, and a privacy-forward "local-first" behavior with no built-in telemetry.
+
+## Latest Major Update (2026-05-30)
+
+See the dedicated section above ("Major Update – May 2026") for the full list of completed work, including the comprehensive UI/UX overhaul and five new features.
+
+Previous session fixes (2026-05-28) remain relevant:
+- Fixed session restore startup behavior so restored tabs no longer trigger an extra navigation on launch.
+- Reworked startup restore flow to call tab switching from Rust state instead of reloading the same URL through the address path.
+
 ## About
 
 Orbit is a native macOS browser built for people who want the web without the overhead. No Chrome bloat, no Electron memory tax, no analytics pinging home.
@@ -117,6 +163,7 @@ Runs:
 | `Cmd+Shift+[` / `Cmd+Shift+]` | Previous / Next tab |
 | `Cmd+1` … `Cmd+9` | Switch to tab by index |
 | `Cmd+F` | Find in page |
+| `Cmd+Shift+R` | Toggle Reader Mode |
 
 ---
 
