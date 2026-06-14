@@ -7,6 +7,8 @@ release/
 .env
 .env.local
 coverage/
+output/
+.playwright-cli/
 *.tsbuildinfo
 .vscode/
 .idea/
