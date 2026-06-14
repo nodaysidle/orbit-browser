@@ -17,21 +17,23 @@
         "height": 800,
         "minWidth": 800,
         "minHeight": 600,
-        "center": true,
+        "center": false,
         "decorations": false,
         "transparent": false,
         "shadow": true,
-        "backgroundColor": "#0c0c0e"
+        "backgroundColor": "#0c0f1a"
       }
     ],
     "security": {
-      "csp": null,
-      "dangerousDisableAssetCspModification": true
+      "capabilities": ["main"],
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: http: data: asset: http://asset.localhost; font-src 'self'; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+      "devCsp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: http: data: asset: http://asset.localhost; font-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+      "dangerousDisableAssetCspModification": false
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": "app",
     "resources": {
       "../resources/adblock-patterns.json": "resources/adblock-patterns.json"
     },
@@ -45,6 +47,7 @@
     "macOS": {
       "frameworks": [],
       "minimumSystemVersion": "10.15",
+      "signingIdentity": "-",
       "entitlements": null
     }
   }

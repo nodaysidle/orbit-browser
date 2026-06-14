@@ -1,6 +1,8 @@
-use rusqlite::{Connection, Result, params, OptionalExtension};
+use rusqlite::{params, Connection, OptionalExtension, Result};
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::io;
+use std::sync::{Mutex, MutexGuard};
+use std::time::Duration;
 
 pub struct Db {
     pub conn: Mutex<Connection>,
@@ -28,28 +30,88 @@ pub struct HistoryEntry {
 impl Db {
     pub fn open(path: &std::path::Path) -> Result<Self> {
         let conn = Connection::open(path)?;
-        let db = Self { conn: Mutex::new(conn) };
-        db.init_schema()?;
+        conn.busy_timeout(Duration::from_secs(5))?;
+        let db = Self {
+            conn: Mutex::new(conn),
+        };
+        db.migrate()?;
         Ok(db)
     }
 
+    #[cfg(test)]
     pub fn open_in_memory() -> Result<Self> {
         let conn = Connection::open_in_memory()?;
-        let db = Self { conn: Mutex::new(conn) };
-        db.init_schema()?;
+        conn.busy_timeout(Duration::from_secs(5))?;
+        let db = Self {
+            conn: Mutex::new(conn),
+        };
+        db.migrate()?;
         Ok(db)
     }
 
-    fn init_schema(&self) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
-        conn.execute_batch("
+    const CURRENT_SCHEMA_VERSION: i32 = 1;
+
+    /// Run any pending schema migrations to bring the database up to date.
+    fn migrate(&self) -> Result<()> {
+        let conn = self.lock_conn()?;
+
+        // Ensure the settings table exists so we can read the schema version
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS settings (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );",
+        )?;
+
+        // Read current schema version, defaulting to 0 (pre-migration system)
+        let version: i32 = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = 'schema_version'",
+                [],
+                |row| {
+                    let val: String = row.get(0)?;
+                    Ok(val.parse().unwrap_or(0))
+                },
+            )
+            .optional()?
+            .unwrap_or(0);
+
+        if version < 1 {
+            migrate_to_v1_inner(&conn)?;
+        }
+        // Future migrations: if version < 2 { migrate_v1_to_v2_inner(&conn)?; }
+
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('schema_version', ?1)",
+            params![Self::CURRENT_SCHEMA_VERSION.to_string()],
+        )?;
+        Ok(())
+    }
+}
+
+fn migrate_to_v1_inner(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "
             CREATE TABLE IF NOT EXISTS bookmarks (
                 id          TEXT PRIMARY KEY,
-                url         TEXT NOT NULL,
+                url         TEXT NOT NULL UNIQUE,
                 title       TEXT NOT NULL,
                 favicon     TEXT,
                 created_at  INTEGER NOT NULL
             );
+            DELETE FROM bookmarks
+            WHERE rowid IN (
+                SELECT rowid FROM (
+                    SELECT rowid,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY url
+                               ORDER BY created_at DESC, rowid DESC
+                           ) AS duplicate_rank
+                    FROM bookmarks
+                )
+                WHERE duplicate_rank > 1
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_url ON bookmarks(url);
             CREATE TABLE IF NOT EXISTS history (
                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
                 url          TEXT NOT NULL UNIQUE,
@@ -64,49 +126,45 @@ impl Db {
                 key   TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );
-        ")?;
-        Ok(())
-    }
+        ",
+    )?;
+    Ok(())
+}
 
+impl Db {
     // ── Bookmarks ─────────────────────────────────────────────────────────────
 
     pub fn add_bookmark(&self, url: &str, title: &str) -> Result<Bookmark> {
         let id = uuid::Uuid::new_v4().to_string();
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64;
-        let conn = self.conn.lock().unwrap();
-        conn.execute(
-            "INSERT OR IGNORE INTO bookmarks (id, url, title, created_at) VALUES (?1, ?2, ?3, ?4)",
+        let now = unix_timestamp();
+        let conn = self.lock_conn()?;
+        conn.query_row(
+            "INSERT INTO bookmarks (id, url, title, created_at)
+             VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(url) DO UPDATE SET title = excluded.title
+             RETURNING id, url, title, favicon, created_at",
             params![id, url, title, now],
-        )?;
-        Ok(Bookmark { id, url: url.to_string(), title: title.to_string(), favicon: None, created_at: now })
+            bookmark_from_row,
+        )
     }
 
     pub fn get_bookmarks(&self) -> Result<Vec<Bookmark>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.lock_conn()?;
         let mut stmt = conn.prepare(
-            "SELECT id, url, title, favicon, created_at FROM bookmarks ORDER BY created_at DESC"
+            "SELECT id, url, title, favicon, created_at FROM bookmarks ORDER BY created_at DESC",
         )?;
-        let rows = stmt.query_map([], |row| Ok(Bookmark {
-            id: row.get(0)?,
-            url: row.get(1)?,
-            title: row.get(2)?,
-            favicon: row.get(3)?,
-            created_at: row.get(4)?,
-        }))?;
+        let rows = stmt.query_map([], bookmark_from_row)?;
         rows.collect()
     }
 
     pub fn delete_bookmark(&self, id: &str) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.lock_conn()?;
         conn.execute("DELETE FROM bookmarks WHERE id = ?1", params![id])?;
         Ok(())
     }
 
     pub fn is_bookmarked(&self, url: &str) -> Result<bool> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.lock_conn()?;
         let count: i64 = conn.query_row(
             "SELECT COUNT(*) FROM bookmarks WHERE url = ?1",
             params![url],
@@ -117,62 +175,113 @@ impl Db {
 
     // ── History ───────────────────────────────────────────────────────────────
 
+    /// Maximum number of history entries retained. Older entries are pruned
+    /// automatically when this limit is exceeded.
+    pub const MAX_HISTORY_ENTRIES: i64 = 10_000;
+
     pub fn add_history(&self, url: &str, title: &str) -> Result<()> {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64;
-        let conn = self.conn.lock().unwrap();
-        conn.execute(
-            "INSERT INTO history (url, title, last_visited) VALUES (?1, ?2, ?3)
-             ON CONFLICT(url) DO UPDATE SET
-                title = excluded.title,
-                visit_count = visit_count + 1,
-                last_visited = excluded.last_visited",
-            params![url, title, now],
-        )?;
+        let now = unix_timestamp();
+        {
+            let mut conn = self.lock_conn()?;
+            let tx = conn.transaction()?;
+            let updated = tx.execute(
+                "UPDATE history
+                 SET title = ?2,
+                     visit_count = visit_count + 1,
+                     last_visited = ?3
+                 WHERE url = ?1",
+                params![url, title, now],
+            )?;
+            if updated == 0 {
+                let inserted = tx.execute(
+                    "INSERT OR IGNORE INTO history (url, title, last_visited) VALUES (?1, ?2, ?3)",
+                    params![url, title, now],
+                )?;
+                if inserted == 0 {
+                    tx.execute(
+                        "UPDATE history
+                         SET title = ?2,
+                             visit_count = visit_count + 1,
+                             last_visited = ?3
+                         WHERE url = ?1",
+                        params![url, title, now],
+                    )?;
+                }
+            }
+            tx.commit()?;
+        }
+        // Lock released above; safe to prune with a fresh lock
+        self.prune_history(Self::MAX_HISTORY_ENTRIES)
+    }
+
+    /// Remove the oldest history entries so at most `limit` remain.
+    fn prune_history(&self, limit: i64) -> Result<()> {
+        let conn = self.lock_conn()?;
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM history", [], |row| row.get(0))?;
+        if count > limit {
+            let excess = count - limit;
+            conn.execute(
+                "DELETE FROM history WHERE id IN (
+                    SELECT id FROM history
+                    ORDER BY last_visited ASC, id ASC
+                    LIMIT ?
+                )",
+                params![excess],
+            )?;
+        }
         Ok(())
     }
 
     pub fn get_history(&self, limit: i64, offset: i64) -> Result<Vec<HistoryEntry>> {
-        let conn = self.conn.lock().unwrap();
+        let limit = limit.clamp(1, 200);
+        let offset = offset.max(0);
+        let conn = self.lock_conn()?;
         let mut stmt = conn.prepare(
             "SELECT id, url, title, favicon, visit_count, last_visited
-             FROM history ORDER BY last_visited DESC LIMIT ?1 OFFSET ?2"
+             FROM history ORDER BY last_visited DESC LIMIT ?1 OFFSET ?2",
         )?;
-        let rows = stmt.query_map(params![limit, offset], |row| Ok(HistoryEntry {
-            id: row.get(0)?,
-            url: row.get(1)?,
-            title: row.get(2)?,
-            favicon: row.get(3)?,
-            visit_count: row.get(4)?,
-            last_visited: row.get(5)?,
-        }))?;
+        let rows = stmt.query_map(params![limit, offset], |row| {
+            Ok(HistoryEntry {
+                id: row.get(0)?,
+                url: row.get(1)?,
+                title: row.get(2)?,
+                favicon: row.get(3)?,
+                visit_count: row.get(4)?,
+                last_visited: row.get(5)?,
+            })
+        })?;
         rows.collect()
     }
 
     pub fn search_history(&self, query: &str) -> Result<Vec<HistoryEntry>> {
-        let conn = self.conn.lock().unwrap();
-        let pattern = format!("%{}%", query.to_lowercase());
+        let query = query.trim();
+        if query.is_empty() {
+            return Ok(Vec::new());
+        }
+        let conn = self.lock_conn()?;
+        let escaped_query = escape_like_pattern(query);
+        let pattern = format!("%{}%", escaped_query);
         let mut stmt = conn.prepare(
             "SELECT id, url, title, favicon, visit_count, last_visited
              FROM history
-             WHERE lower(url) LIKE ?1 OR lower(title) LIKE ?1
-             ORDER BY last_visited DESC LIMIT 50"
+             WHERE url LIKE ?1 ESCAPE '\\' COLLATE NOCASE OR title LIKE ?1 ESCAPE '\\' COLLATE NOCASE
+             ORDER BY last_visited DESC LIMIT 50",
         )?;
-        let rows = stmt.query_map(params![pattern], |row| Ok(HistoryEntry {
-            id: row.get(0)?,
-            url: row.get(1)?,
-            title: row.get(2)?,
-            favicon: row.get(3)?,
-            visit_count: row.get(4)?,
-            last_visited: row.get(5)?,
-        }))?;
+        let rows = stmt.query_map(params![pattern], |row| {
+            Ok(HistoryEntry {
+                id: row.get(0)?,
+                url: row.get(1)?,
+                title: row.get(2)?,
+                favicon: row.get(3)?,
+                visit_count: row.get(4)?,
+                last_visited: row.get(5)?,
+            })
+        })?;
         rows.collect()
     }
 
     pub fn clear_history(&self) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.lock_conn()?;
         conn.execute("DELETE FROM history", [])?;
         Ok(())
     }
@@ -180,22 +289,92 @@ impl Db {
     // ── Settings ──────────────────────────────────────────────────────────────
 
     pub fn get_setting(&self, key: &str) -> Result<Option<String>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.lock_conn()?;
         conn.query_row(
             "SELECT value FROM settings WHERE key = ?1",
             params![key],
             |row| row.get(0),
-        ).optional()
+        )
+        .optional()
     }
 
     pub fn set_setting(&self, key: &str, value: &str) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.lock_conn()?;
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
             params![key, value],
         )?;
         Ok(())
     }
+
+    // ── Session ───────────────────────────────────────────────────────────────
+
+    pub fn save_session(
+        &self,
+        tabs: &[crate::browser::TabInfo],
+        active_id: Option<&str>,
+    ) -> Result<()> {
+        let tab_urls: Vec<&str> = tabs.iter().map(|t| t.url.as_str()).collect();
+        let json = serde_json::to_string(&tab_urls)
+            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+        let active_index = active_id
+            .and_then(|id| tabs.iter().position(|tab| tab.id == id))
+            .map(|idx| idx.to_string())
+            .unwrap_or_default();
+        self.set_setting("session_tabs", &json)?;
+        self.set_setting("session_active_index", &active_index)?;
+        Ok(())
+    }
+
+    pub fn load_session(&self) -> Result<(Vec<String>, Option<usize>)> {
+        let tabs_json = self
+            .get_setting("session_tabs")?
+            .unwrap_or_else(|| "[]".to_string());
+        let urls: Vec<String> = serde_json::from_str(&tabs_json).map_err(|e| {
+            rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
+        })?;
+        let active = self
+            .get_setting("session_active_index")?
+            .and_then(|value| value.parse::<usize>().ok());
+        Ok((urls, active))
+    }
+
+    fn lock_conn(&self) -> Result<MutexGuard<'_, Connection>> {
+        self.conn.lock().map_err(|_| {
+            rusqlite::Error::ToSqlConversionFailure(Box::new(io::Error::other(
+                "database lock poisoned",
+            )))
+        })
+    }
+}
+
+fn escape_like_pattern(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len());
+    for ch in value.chars() {
+        match ch {
+            '\\' | '%' | '_' => escaped.push('\\'),
+            _ => {}
+        }
+        escaped.push(ch);
+    }
+    escaped
+}
+
+fn bookmark_from_row(row: &rusqlite::Row<'_>) -> Result<Bookmark> {
+    Ok(Bookmark {
+        id: row.get(0)?,
+        url: row.get(1)?,
+        title: row.get(2)?,
+        favicon: row.get(3)?,
+        created_at: row.get(4)?,
+    })
+}
+
+fn unix_timestamp() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs() as i64)
+        .unwrap_or(0)
 }
 
 #[cfg(test)]
@@ -207,6 +386,48 @@ mod tests {
     }
 
     #[test]
+    fn test_schema_migration_sets_version() {
+        let db = test_db();
+        let version = db.get_setting("schema_version").unwrap();
+        assert_eq!(version.as_deref(), Some("1"));
+    }
+
+    #[test]
+    fn test_schema_migration_is_idempotent() {
+        let db = test_db();
+        // Call migrate again — should be harmless
+        db.migrate().unwrap();
+        let version = db.get_setting("schema_version").unwrap();
+        assert_eq!(version.as_deref(), Some("1"));
+        // All tables should still be queryable
+        let bookmarks = db.get_bookmarks().unwrap();
+        assert!(bookmarks.is_empty());
+        let history = db.get_history(10, 0).unwrap();
+        assert!(history.is_empty());
+    }
+
+    #[test]
+    fn test_migration_from_version_0() {
+        // Simulate a pre-migration database (no schema_version setting)
+        let conn = Connection::open_in_memory().unwrap();
+        // Create settings table manually (without the schema_version row)
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
+        )
+        .unwrap();
+        let db = Db {
+            conn: Mutex::new(conn),
+        };
+        // migrate should create all tables and set version
+        db.migrate().unwrap();
+        let version = db.get_setting("schema_version").unwrap();
+        assert_eq!(version.as_deref(), Some("1"));
+        // Bookmarks table should exist
+        let bookmarks = db.get_bookmarks().unwrap();
+        assert!(bookmarks.is_empty());
+    }
+
+    #[test]
     fn test_bookmark_add_and_get() {
         let db = test_db();
         let bm = db.add_bookmark("https://github.com", "GitHub").unwrap();
@@ -214,6 +435,19 @@ mod tests {
         assert_eq!(bm.title, "GitHub");
         let all = db.get_bookmarks().unwrap();
         assert_eq!(all.len(), 1);
+    }
+
+    #[test]
+    fn test_bookmark_add_updates_existing_url() {
+        let db = test_db();
+        let first = db.add_bookmark("https://github.com", "GitHub").unwrap();
+        let second = db
+            .add_bookmark("https://github.com", "GitHub Home")
+            .unwrap();
+        let all = db.get_bookmarks().unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(first.id, second.id);
+        assert_eq!(second.title, "GitHub Home");
     }
 
     #[test]
@@ -239,7 +473,8 @@ mod tests {
     #[test]
     fn test_history_search_filters_by_url_and_title() {
         let db = test_db();
-        db.add_history("https://rust-lang.org", "Rust Programming Language").unwrap();
+        db.add_history("https://rust-lang.org", "Rust Programming Language")
+            .unwrap();
         db.add_history("https://github.com", "GitHub").unwrap();
         // Search by URL
         let r1 = db.search_history("rust-lang").unwrap();
@@ -254,6 +489,61 @@ mod tests {
     }
 
     #[test]
+    fn test_history_pruning_at_limit() {
+        let db = test_db();
+        let small_limit = 10;
+        // Insert 15 unique entries
+        for i in 0..15 {
+            db.add_history(&format!("https://x.com/p{i}"), &format!("P{i}"))
+                .unwrap();
+        }
+        // Prune down to 10
+        db.prune_history(small_limit).unwrap();
+        let all = db.get_history(200, 0).unwrap();
+        assert_eq!(all.len(), small_limit as usize);
+    }
+
+    #[test]
+    fn test_history_pruning_keeps_most_recent() {
+        let db = test_db();
+        // Insert entries; later entries have higher last_visited
+        for i in 0..20 {
+            db.add_history(&format!("https://x.com/p{i}"), &format!("Page {i}"))
+                .unwrap();
+        }
+        db.prune_history(10).unwrap();
+        let all = db.get_history(200, 0).unwrap();
+        assert_eq!(all.len(), 10);
+        // Most recent entries (p19, p18, ...) should survive
+        let urls: Vec<&str> = all.iter().map(|e| e.url.as_str()).collect();
+        assert!(
+            urls.iter().any(|u| u.contains("/p19")),
+            "most recent entry should survive pruning"
+        );
+        assert!(
+            !urls
+                .iter()
+                .any(|u| u.contains("/p0") && !u.contains("/p09")),
+            "oldest entry should be pruned"
+        );
+    }
+
+    #[test]
+    fn test_history_under_limit_no_pruning() {
+        let db = test_db();
+        for i in 0..5 {
+            db.add_history(
+                &format!("https://example.com/page{i}"),
+                &format!("Page {i}"),
+            )
+            .unwrap();
+        }
+        db.prune_history(10).unwrap();
+        let all = db.get_history(200, 0).unwrap();
+        assert_eq!(all.len(), 5);
+    }
+
+    #[test]
     fn test_settings_get_set() {
         let db = test_db();
         assert!(db.get_setting("theme").unwrap().is_none());
@@ -262,5 +552,40 @@ mod tests {
         // Overwrite
         db.set_setting("theme", "light").unwrap();
         assert_eq!(db.get_setting("theme").unwrap(), Some("light".into()));
+    }
+
+    #[test]
+    fn test_session_persists_active_index() {
+        let db = test_db();
+        let tabs = vec![
+            crate::browser::TabInfo {
+                id: "a".into(),
+                url: "https://example.com".into(),
+                title: "example.com".into(),
+                loading: false,
+                can_go_back: false,
+                can_go_forward: false,
+            },
+            crate::browser::TabInfo {
+                id: "b".into(),
+                url: "https://rust-lang.org".into(),
+                title: "rust-lang.org".into(),
+                loading: false,
+                can_go_back: false,
+                can_go_forward: false,
+            },
+        ];
+
+        db.save_session(&tabs, Some("b")).unwrap();
+
+        let (urls, active_index) = db.load_session().unwrap();
+        assert_eq!(
+            urls,
+            vec![
+                "https://example.com".to_string(),
+                "https://rust-lang.org".to_string()
+            ]
+        );
+        assert_eq!(active_index, Some(1));
     }
 }

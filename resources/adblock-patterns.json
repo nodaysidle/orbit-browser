@@ -82,5 +82,18 @@
     "advertising.",
     "/promo/"
   ],
-  "regexPattern": "\\/ads?\\/|\\/advert|[?&]ad[_=]|\\/sponsored|\\/tracker|\\/pixel\\.|\\/beacon|\\/telemetry|\\/analytics\\.js|\\/gtag\\/"
+  "urlPatterns": [
+    "/ad/",
+    "/ads/",
+    "/advert",
+    "ad_=",
+    "ad=",
+    "/sponsored",
+    "/tracker",
+    "/pixel.",
+    "/beacon",
+    "/telemetry",
+    "/analytics.js",
+    "/gtag/"
+  ]
 }

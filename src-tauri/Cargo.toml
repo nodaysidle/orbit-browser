@@ -7,11 +7,13 @@ edition = "2021"
 rust-version = "1.75"
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "=2.5.6", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["unstable"] }
-tauri-plugin-shell = "2"
+# Tauri's unstable feature is required for native child webviews.
+# Pin exact Tauri crates while those APIs are unstable; remove the feature
+# when stable child webview APIs cover Orbit's tab model.
+tauri = { version = "=2.10.3", features = ["unstable"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
@@ -19,6 +21,4 @@ uuid = { version = "1", features = ["v4"] }
 url = "2"
 rusqlite = { version = "0.31", features = ["bundled"] }
 urlencoding = "2"
-
-[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-updater = "2"
+reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
