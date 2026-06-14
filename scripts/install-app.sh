@@ -1,45 +1,63 @@
 #!/bin/bash
-# Install Orbit to /Applications
+set -euo pipefail
 
 APP_NAME="Orbit.app"
+SOURCE_APP="src-tauri/target/release/bundle/macos/$APP_NAME"
+TARGET_APP="/Applications/$APP_NAME"
+STAGED_APP="/Applications/$APP_NAME.new"
+BACKUP_APP=""
 
-# Find the latest DMG
-DMG_PATH=$(ls -t release/*.dmg 2>/dev/null | head -1)
+cleanup() {
+  rm -rf "$STAGED_APP"
+}
+trap cleanup EXIT
 
-if [ -z "$DMG_PATH" ]; then
-  echo "❌ No DMG found in release/ directory"
-  echo "Run ./scripts/build-mac.sh first"
+if [ ! -d "$SOURCE_APP" ]; then
+  echo "No app bundle found at $SOURCE_APP"
+  echo "Run ./scripts/build-mac.sh first."
   exit 1
 fi
 
-echo "📦 Found: $DMG_PATH"
-echo "💿 Mounting..."
+echo "Installing $APP_NAME to /Applications..."
 
-# Mount the DMG
-MOUNT_INFO=$(hdiutil attach "$DMG_PATH" -nobrowse -readonly)
-MOUNT_POINT=$(echo "$MOUNT_INFO" | grep -o '/Volumes/[^ ]*' | tail -1)
+osascript -e 'tell application "Orbit" to quit' >/dev/null 2>&1 || true
+for _ in {1..20}; do
+  if ! pgrep -x Orbit >/dev/null && ! pgrep -x orbit >/dev/null; then
+    break
+  fi
+  sleep 0.25
+done
 
-if [ -z "$MOUNT_POINT" ]; then
-  echo "❌ Failed to mount DMG"
+rm -rf "$STAGED_APP"
+ditto "$SOURCE_APP" "$STAGED_APP"
+codesign --verify --deep --strict --verbose=2 "$STAGED_APP"
+
+if [ -d "$TARGET_APP" ]; then
+  BACKUP_APP="/Applications/$APP_NAME.backup.$(date +%Y%m%d%H%M%S)"
+  echo "Preserving existing installation..."
+  mv "$TARGET_APP" "$BACKUP_APP"
+fi
+
+if ! mv "$STAGED_APP" "$TARGET_APP"; then
+  if [ -n "$BACKUP_APP" ] && [ -d "$BACKUP_APP" ]; then
+    mv "$BACKUP_APP" "$TARGET_APP"
+  fi
+  echo "Install failed; previous Orbit.app was restored."
   exit 1
 fi
 
-echo "📂 Mounted at: $MOUNT_POINT"
-echo "🚀 Installing to /Applications..."
-
-# Copy app to Applications
-if [ -d "/Applications/$APP_NAME" ]; then
-  echo "🗑️  Removing existing installation..."
-  rm -rf "/Applications/$APP_NAME"
+if ! codesign --verify --deep --strict --verbose=2 "$TARGET_APP"; then
+  rm -rf "$TARGET_APP"
+  if [ -n "$BACKUP_APP" ] && [ -d "$BACKUP_APP" ]; then
+    mv "$BACKUP_APP" "$TARGET_APP"
+  fi
+  echo "Installed app failed verification; previous Orbit.app was restored."
+  exit 1
 fi
 
-cp -R "$MOUNT_POINT/$APP_NAME" /Applications/
+if [ -n "$BACKUP_APP" ] && [ -d "$BACKUP_APP" ]; then
+  rm -rf "$BACKUP_APP"
+fi
 
-echo "💨 Unmounting..."
-hdiutil detach "$MOUNT_POINT" -quiet
-
-echo ""
-echo "✅ Orbit installed successfully!"
-echo "📍 Location: /Applications/$APP_NAME"
-echo ""
-echo "🎉 You can now launch Orbit from Applications or Spotlight (⌘Space)"
+echo "Orbit installed successfully."
+echo "Location: $TARGET_APP"

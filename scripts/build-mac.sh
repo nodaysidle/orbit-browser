@@ -1,29 +1,28 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-echo "🚀 Building Orbit for macOS..."
+echo "Building Orbit for macOS..."
 
-# Clean previous builds
-echo "🧹 Cleaning previous builds..."
-rm -rf release out
-
-# Install dependencies
-echo "📦 Installing dependencies..."
+echo "Installing frontend dependencies..."
 npm ci
 
-# Run tests
-echo "🧪 Running tests..."
-npm run test
+echo "Running frontend tests..."
+npm test
 
-# Build TypeScript
-echo "🔨 Building TypeScript..."
+echo "Building frontend..."
 npm run build
 
-# Package Electron app
-echo "📦 Packaging Electron app..."
-npx electron-builder --mac
+echo "Running Rust checks..."
+(
+  cd src-tauri
+  cargo fmt --check
+  cargo test
+  cargo clippy -- -D warnings
+)
 
-echo "✅ Build complete!"
-echo ""
-echo "📦 Output files:"
-ls -lh release/
+echo "Packaging Tauri app..."
+CI=false npm run tauri -- build
+
+echo "Build complete."
+echo "App bundle: src-tauri/target/release/bundle/macos/Orbit.app"
+codesign --verify --deep --strict --verbose=2 src-tauri/target/release/bundle/macos/Orbit.app
