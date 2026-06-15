@@ -57,7 +57,6 @@ export function renderShortcutGrid(container, shortcuts = []) {
       el('span', { className: 'shortcut-tooltip', text: shortcut.title }),
     ])
 
-    // Slice 2 — inline delete affordance on new-tab shortcuts (approved design, reuses existing save path)
     const del = el('button', {
       className: 'shortcut-delete',
       type: 'button',
@@ -72,11 +71,10 @@ export function renderShortcutGrid(container, shortcuts = []) {
 
 export function renderRecentPages(container, entries = []) {
   if (!entries.length) {
-    // Slice 2 — richer empty state with quick suggestions (approved design)
     const suggestions = [
+      { title: 'GitHub', url: 'https://github.com' },
       { title: 'YouTube', url: 'https://youtube.com' },
-      { title: 'Product Hunt', url: 'https://producthunt.com' },
-      { title: 'NODAYSIDLE', url: 'https://gitlab.com/NODAYSIDLE' },
+      { title: 'Wikipedia', url: 'https://wikipedia.org' },
     ]
     container.replaceChildren(
       el('div', { className: 'recent-empty recent-empty-with-suggestions' }, [

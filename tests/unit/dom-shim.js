@@ -22,7 +22,7 @@ export function installDom() {
   }
   globalThis.requestAnimationFrame = globalThis.window.requestAnimationFrame
   globalThis.cancelAnimationFrame = globalThis.window.cancelAnimationFrame
-  globalThis.getComputedStyle = () => ({ getPropertyValue: () => '124px' })
+  globalThis.getComputedStyle = () => ({ getPropertyValue: () => '130px' })
   return document
 }
 

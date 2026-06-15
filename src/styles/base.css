@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Orbit — Editorial Celestial
-   Typography-first, warm cosmic palette, parchment light theme.
+   Orbit — Native macOS Design System
+   Restrained neutral surfaces, system-like focus, light/dark parity.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @font-face {
@@ -23,152 +23,121 @@
   padding: 0;
 }
 
-/* ── Theme Transition ─────────────────────────────────────────────────── */
-/* Smooth crossfade when switching dark ↔ light (borrowed from Organic Cosmos).
-   Applied only to specific visual properties, not the html element itself,
-   to avoid initial-paint timing issues that misalign webview sizing. */
-
-/* Theme transitions are on specific interactive/visual elements only.
-   The html background transition is intentionally omitted — it can cause
-   window-size read timing issues during initial render. */
-
-/* ── Dark Theme (Default) — Deep Cosmic Navy ──────────────────────────── */
+/* Theme transitions stay on concrete surfaces only. Avoid animating html/body
+   because Tauri child-webview sizing reads can happen during first paint. */
 
 :root {
-  /* Void & surfaces — layered warm grays with subtle color shifts */
-  --bg: #0c0f1a;
-  --chrome: rgba(14, 17, 26, 0.94);
-  --chrome-soft: rgba(18, 22, 32, 0.9);
-  --surface: rgba(22, 26, 38, 0.88);
-  --surface-raised: rgba(28, 33, 46, 0.94);
-  --surface-warm: rgba(32, 30, 42, 0.86);
+  --bg: #1c1c1e;
+  --chrome: rgba(30, 30, 32, 0.94);
+  --chrome-alpha: rgba(30, 30, 32, 0.94);
+  --chrome-soft: rgba(36, 36, 38, 0.92);
+  --surface: rgba(44, 44, 46, 0.88);
+  --surface-raised: rgba(58, 58, 60, 0.94);
+  --surface-warm: rgba(48, 48, 50, 0.88);
+  --panel-focus-bg: rgba(58, 58, 60, 0.98);
+  --glass-pane: rgba(255, 255, 255, 0.055);
 
-  /* Lines — warm, like aged paper edges */
-  --line: rgba(180, 160, 140, 0.14);
-  --line-strong: rgba(180, 160, 140, 0.26);
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.16);
 
-  /* Text — editorial warmth */
-  --text: #e8e0d5;
-  --muted: #b8ad9a;
-  --quiet: #8a8070;
+  --text: #f5f5f7;
+  --muted: #a1a1a6;
+  --quiet: #747478;
 
-  /* Accent — burnished copper */
-  --accent: #d4926a;
-  --accent-soft: rgba(212, 146, 106, 0.16);
-  --accent-glow: rgba(212, 146, 106, 0.28);
+  --accent: #0a84ff;
+  --accent-soft: rgba(10, 132, 255, 0.14);
+  --accent-glow: rgba(10, 132, 255, 0.34);
+  --blue: #0a84ff;
+  --teal: #64d2ff;
+  --gold: #ffd60a;
+  --red: #ff453a;
+  --violet: #bf5af2;
+  --green: #32d74b;
 
-  /* Secondary accents */
-  --blue: #7b8faa;
-  --teal: #6b9e8a;
-  --gold: #c4a96a;
-  --red: #c47a8a;
-  --violet: #9b8ec4;
+  --shadow: 0 22px 54px rgba(0, 0, 0, 0.42);
+  --shadow-soft: 0 10px 26px rgba(0, 0, 0, 0.28);
+  --tab-shadow: 0 10px 26px rgba(0, 0, 0, 0.26);
+  --shortcut-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
+  --button-bg: rgba(255, 255, 255, 0.055);
+  --chrome-hover: rgba(255, 255, 255, 0.08);
+  --focus-ring: rgba(10, 132, 255, 0.24);
+  --focus-border: rgba(10, 132, 255, 0.68);
+  --danger-soft: rgba(255, 69, 58, 0.15);
+  --bookmark-soft: rgba(255, 214, 10, 0.14);
+  --home-core-bg: #f5f5f7;
+  --home-core-text: #1c1c1e;
+  --address-inset: inset 0 1px 0 rgba(255, 255, 255, 0.075);
 
-  /* Shadows & effects */
-  --shadow: 0 16px 40px rgba(4, 6, 12, 0.5);
-  --shadow-soft: 0 8px 24px rgba(4, 6, 12, 0.32);
-  --app-gradient:
-    linear-gradient(175deg, rgba(30, 28, 40, 0.25), transparent 38%),
-    linear-gradient(215deg, rgba(50, 45, 38, 0.18), transparent 44%),
-    linear-gradient(180deg, rgba(12, 15, 26, 0.98), rgba(12, 15, 26, 1) 62%);
-  --chrome-alpha: rgba(14, 17, 26, 0.94);
-  --chrome-hover: rgba(180, 160, 140, 0.08);
-  --button-bg: rgba(180, 160, 140, 0.06);
-  --focus-ring: rgba(212, 146, 106, 0.22);
-  --focus-border: rgba(212, 146, 106, 0.6);
-  --tab-shadow: 0 8px 24px rgba(4, 6, 12, 0.44);
-  --address-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --danger-soft: rgba(196, 122, 138, 0.14);
-  --bookmark-soft: rgba(196, 169, 106, 0.16);
-  --home-core-bg: #e8e0d5;
-  --home-core-text: #0c0f1a;
-  --shortcut-shadow: 0 8px 24px rgba(4, 6, 12, 0.3);
-  --panel-focus-bg: rgba(32, 36, 50, 0.9);
+  --glass-blur: 18px;
+  --glass-saturate: 132%;
+  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --glass-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 58%);
 
-  /* Glass — softer, more like aged glass than tech glass */
-  --glass-blur: 12px;
-  --glass-saturate: 108%;
-  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  --glass-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 48%);
-  --glass-pane: rgba(255, 255, 255, 0.03);
-
-  /* Layout */
   --chrome-height: 130px;
   --radius: 10px;
-  --radius-sm: 6px;
+  --radius-sm: 7px;
   --radius-lg: 16px;
 
-  /* Typography */
-  --font-ui: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-  --font-display: 'Instrument Serif', 'Didot', 'Bodoni MT', Georgia, serif;
+  --font-ui: 'SF Pro Text', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  --font-display: 'SF Pro Display', 'New York', 'Instrument Serif', -apple-system, BlinkMacSystemFont, serif;
   --font-mono: 'Orbit Mono', 'SF Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Traffic lights */
   --traffic-close: #ff5f57;
   --traffic-minimize: #febc2e;
   --traffic-maximize: #31c251;
 
-  /* Motion */
-  --motion-slow: 340ms;
-  --motion-base: 220ms;
-  --motion-fast: 130ms;
-  --ease-editorial: cubic-bezier(0.33, 0, 0.1, 1);
+  --motion-slow: 320ms;
+  --motion-base: 200ms;
+  --motion-fast: 120ms;
+  --ease-editorial: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-standard: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-/* ── Light Theme — Warm Parchment ─────────────────────────────────────── */
-
 :root[data-theme='light'] {
-  --bg: #faf6ef;
-  --chrome: rgba(252, 248, 241, 0.95);
-  --chrome-soft: rgba(250, 244, 234, 0.94);
-  --surface: rgba(248, 241, 230, 0.92);
-  --surface-raised: rgba(255, 251, 245, 0.97);
-  --surface-warm: rgba(245, 236, 222, 0.9);
+  --bg: #f5f5f7;
+  --chrome: rgba(246, 246, 248, 0.94);
+  --chrome-alpha: rgba(246, 246, 248, 0.94);
+  --chrome-soft: rgba(238, 238, 241, 0.92);
+  --surface: rgba(255, 255, 255, 0.84);
+  --surface-raised: rgba(255, 255, 255, 0.96);
+  --surface-warm: rgba(248, 248, 250, 0.9);
+  --panel-focus-bg: rgba(255, 255, 255, 1);
+  --glass-pane: rgba(0, 0, 0, 0.035);
 
-  --line: rgba(140, 110, 80, 0.16);
-  --line-strong: rgba(140, 110, 80, 0.28);
+  --line: rgba(0, 0, 0, 0.085);
+  --line-strong: rgba(0, 0, 0, 0.16);
 
-  --text: #1c1914;
-  --muted: #6b5d4e;
-  --quiet: #9b8b78;
+  --text: #1d1d1f;
+  --muted: #636366;
+  --quiet: #8e8e93;
 
-  --accent: #b87050;
-  --accent-soft: rgba(184, 112, 80, 0.12);
-  --accent-glow: rgba(184, 112, 80, 0.22);
+  --accent: #0071e3;
+  --accent-soft: rgba(0, 113, 227, 0.11);
+  --accent-glow: rgba(0, 113, 227, 0.28);
+  --blue: #0071e3;
+  --teal: #007aff;
+  --gold: #bf8d00;
+  --red: #d70015;
+  --violet: #7d4fd0;
+  --green: #248a3d;
 
-  --blue: #5b7088;
-  --teal: #4d8a76;
-  --gold: #a08840;
-  --red: #a85860;
-  --violet: #7768a0;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.13);
+  --shadow-soft: 0 8px 22px rgba(0, 0, 0, 0.08);
+  --tab-shadow: 0 8px 18px rgba(0, 0, 0, 0.1);
+  --shortcut-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  --button-bg: rgba(0, 0, 0, 0.035);
+  --chrome-hover: rgba(0, 0, 0, 0.055);
+  --focus-ring: rgba(0, 113, 227, 0.18);
+  --focus-border: rgba(0, 113, 227, 0.55);
+  --danger-soft: rgba(215, 0, 21, 0.09);
+  --bookmark-soft: rgba(191, 141, 0, 0.1);
+  --home-core-bg: #1d1d1f;
+  --home-core-text: #f5f5f7;
+  --address-inset: inset 0 1px 0 rgba(255, 255, 255, 0.76);
 
-  --shadow: 0 12px 32px rgba(60, 40, 20, 0.1);
-  --shadow-soft: 0 4px 16px rgba(60, 40, 20, 0.06);
-  --app-gradient:
-    linear-gradient(175deg, rgba(200, 180, 160, 0.15), transparent 38%),
-    linear-gradient(215deg, rgba(180, 160, 140, 0.1), transparent 44%),
-    linear-gradient(180deg, rgba(252, 248, 241, 0.98), rgba(250, 246, 239, 1) 62%);
-  --chrome-alpha: rgba(252, 248, 241, 0.95);
-  --chrome-hover: rgba(140, 110, 80, 0.06);
-  --button-bg: rgba(140, 110, 80, 0.04);
-  --focus-ring: rgba(184, 112, 80, 0.2);
-  --focus-border: rgba(184, 112, 80, 0.55);
-  --tab-shadow: 0 4px 16px rgba(60, 40, 20, 0.1);
-  --address-inset: inset 0 1px 0 rgba(0, 0, 0, 0.04);
-  --danger-soft: rgba(168, 88, 96, 0.1);
-  --bookmark-soft: rgba(160, 136, 64, 0.12);
-  --home-core-bg: #1c1914;
-  --home-core-text: #faf6ef;
-  --shortcut-shadow: 0 4px 16px rgba(60, 40, 20, 0.08);
-  --panel-focus-bg: rgba(255, 251, 245, 1);
-
-  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  --glass-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.1) 52%);
-  --glass-pane: rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.66);
+  --glass-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.12) 62%);
 }
-
-/* ── Base ──────────────────────────────────────────────────────────────── */
 
 html, body {
   height: 100%;
@@ -185,45 +154,27 @@ html, body {
   color-scheme: light dark;
 }
 
-/* ── Scrollbar — warm, understated ─────────────────────────────────────── */
-
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar-track { background: transparent; }
 
 ::-webkit-scrollbar-thumb {
   min-height: 32px;
   border: 2px solid transparent;
   border-radius: 999px;
-  background: rgba(180, 160, 140, 0.2);
+  background: rgba(142, 142, 147, 0.32);
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(180, 160, 140, 0.34);
+  background: rgba(142, 142, 147, 0.5);
   background-clip: padding-box;
 }
 
-:root[data-theme='light'] ::-webkit-scrollbar-thumb {
-  background: rgba(140, 110, 80, 0.18);
-  background-clip: padding-box;
-}
-
-:root[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(140, 110, 80, 0.3);
-  background-clip: padding-box;
-}
-
-::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-/* ── Reset ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar-corner { background: transparent; }
 
 button, input, select {
   margin: 0;
@@ -244,6 +195,8 @@ button {
     opacity var(--motion-fast) var(--ease-standard);
 }
 
+button:disabled { cursor: default; }
+
 input {
   min-width: 0;
   background: transparent;
@@ -257,46 +210,16 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-/* ── App Shell ─────────────────────────────────────────────────────────── */
-
 #app {
   position: relative;
   display: flex;
   height: 100vh;
   flex-direction: column;
-  background: var(--app-gradient), var(--bg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 38%),
+    var(--bg);
   isolation: isolate;
 }
-
-/* Subtle grain texture — like fine paper */
-#app::before,
-#app::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-}
-
-#app::before {
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03), transparent 24%, transparent 76%, rgba(255, 255, 255, 0.02)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 32%);
-}
-
-#app::after {
-  background:
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.008) 0,
-      rgba(255, 255, 255, 0.008) 1px,
-      transparent 1px,
-      transparent 3px
-    ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%);
-}
-
-/* ── Icons ─────────────────────────────────────────────────────────────── */
 
 .icon path, .icon rect {
   fill: none;
@@ -306,11 +229,11 @@ select:focus-visible {
   stroke-linejoin: round;
 }
 
-.icon circle {
-  fill: currentColor;
-}
+.icon circle { fill: currentColor; }
 
-/* ── Reduced Motion ────────────────────────────────────────────────────── */
+@media (min-width: 1800px) {
+  .new-tab-page { padding: clamp(56px, 8vw, 104px); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

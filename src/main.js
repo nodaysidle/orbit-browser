@@ -50,10 +50,10 @@ const $ = id => document.getElementById(id)
 const MAX_OVERLAY_HEIGHT = 680
 const STARTUP_BEHAVIORS = new Set(['restore', 'new_tab'])
 const DEFAULT_SHORTCUTS = [
-  { title: 'NODAYSIDLE GitLab', url: 'https://gitlab.com/NODAYSIDLE' },
+  { title: 'GitHub', url: 'https://github.com' },
   { title: 'YouTube', url: 'https://youtube.com' },
-  { title: 'Product Hunt', url: 'https://producthunt.com' },
-  { title: 'Telegram Web', url: 'https://web.telegram.org' },
+  { title: 'Wikipedia', url: 'https://wikipedia.org' },
+  { title: 'Maps', url: 'https://maps.google.com' },
 ]
 const EDITABLE_SHORTCUT_KEYS = new Set(['l', 'r', 'f', 'g', '[', ']', '.', 'h'])
 const SHORTCUT_ACTIONS = new Map([
@@ -286,7 +286,7 @@ function chromeHeight() {
   if (state.chromeHeightCache !== null) return state.chromeHeightCache
   const value = getComputedStyle(document.documentElement).getPropertyValue('--chrome-height').trim()
   const parsed = Number.parseFloat(value)
-  state.chromeHeightCache = Number.isFinite(parsed) ? parsed : 124
+  state.chromeHeightCache = Number.isFinite(parsed) ? parsed : 130
   return state.chromeHeightCache
 }
 

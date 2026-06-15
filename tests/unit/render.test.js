@@ -71,3 +71,15 @@ test('recent pages render openable cards', () => {
   assert.equal(container.children[0].dataset.recentUrl, 'https://www.rust-lang.org/learn')
   assert.equal(container.children[0].querySelector('.recent-card-url').textContent, 'rust-lang.org')
 })
+
+test('recent pages empty state uses neutral useful suggestions', () => {
+  const document = installDom()
+  const container = document.createElement('div')
+
+  renderRecentPages(container, [])
+  const suggestions = [...container.querySelectorAll('.recent-suggestion-pill')]
+    .map(button => button.querySelector('span').textContent)
+
+  assert.deepEqual(suggestions, ['GitHub', 'YouTube', 'Wikipedia'])
+  assert.equal(suggestions.some(title => /nodaysidle|gitlab/i.test(title)), false)
+})
