@@ -4,11 +4,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getVersion } from '@tauri-apps/api/app'
 
 import { bindEvents } from './events.js'
-import { createFindController } from './find.js'
-import { createShortcutHandlers, getShortcutIntent as resolveShortcutIntent, runShortcutIntent as dispatchShortcutIntent } from './shortcuts.js'
-import { icon } from './utils/dom.js'
-import { closeModal, openModal } from './utils/modal.js'
-import { installUnhandledRejectionHandler, logError, showConfirmToast, showToast } from './utils/toast.js'
+import { el, icon } from './utils/dom.js'
 import {
   renderBookmarksList,
   renderHistoryList,
@@ -20,6 +16,7 @@ import {
 import {
   formatError,
   getNavigationTitle,
+  isEditableTarget,
   nextTheme,
   normalizeNavigationInput,
   normalizeSearchEngine,
@@ -46,50 +43,56 @@ const state = {
   chromeHeightCache: null,
   unlisteners: [],
   zoomMemory: new Map(), // origin -> zoom level (e.g. "https://example.com" -> 1.2)
-  tabZoomLevels: new Map(),
-  readerModeTabs: new Map(),
-  pendingDownloadUrl: null,
 }
 
-const win = new URLSearchParams(window.location?.search || '').has('orbit-visual-qa')
-  ? { close: async () => {}, minimize: async () => {}, toggleMaximize: async () => {} }
-  : getCurrentWindow()
+const win = getCurrentWindow()
 const $ = id => document.getElementById(id)
 const MAX_OVERLAY_HEIGHT = 680
-const BROWSER_VIEW_SYNC_INTERVAL_MS = 100
 const STARTUP_BEHAVIORS = new Set(['restore', 'new_tab'])
-const DEFAULT_ZOOM_LEVEL = 1.0
-const MIN_ZOOM_LEVEL = 0.5
-const MAX_ZOOM_LEVEL = 3.0
-const ZOOM_STEP = 0.1
-const VISUAL_QA_PARAM = 'orbit-visual-qa'
 const DEFAULT_SHORTCUTS = [
-  { title: 'NODAYSIDLE', url: 'https://github.com/nodaysidle' },
-  { title: 'Tauri Docs', url: 'https://tauri.app' },
-  { title: 'Rust Docs', url: 'https://doc.rust-lang.org' },
-  { title: 'MDN Web Docs', url: 'https://developer.mozilla.org' },
+  { title: 'GitHub', url: 'https://github.com' },
+  { title: 'YouTube', url: 'https://youtube.com' },
+  { title: 'Wikipedia', url: 'https://wikipedia.org' },
+  { title: 'Maps', url: 'https://maps.google.com' },
 ]
+const EDITABLE_SHORTCUT_KEYS = new Set(['l', 'r', 'f', 'g', '[', ']', '.', 'h'])
+const SHORTCUT_ACTIONS = new Map([
+  ['t', { type: 'new-tab' }],
+  ['shift+h', { type: 'home' }],
+  ['w', { type: 'close-tab' }],
+  ['l', { type: 'focus-address' }],
+  ['r', { type: 'reload' }],
+  ['f', { type: 'find' }],
+  ['g', { type: 'find-next' }],
+  ['=', { type: 'zoom-in' }],
+  ['+', { type: 'zoom-in' }],
+  ['-', { type: 'zoom-out' }],
+  ['0', { type: 'reset-zoom' }],
+  ['shift+r', { type: 'toggle-reader' }],
+  ['.', { type: 'stop' }],
+  ['[', { type: 'back' }],
+  [']', { type: 'forward' }],
+  ['shift+[', { type: 'previous-tab' }],
+  ['shift+]', { type: 'next-tab' }],
+])
 
-const VISUAL_QA_TABS = [
-  { id: 'qa-home', title: 'Orbit Home', url: '', loading: false, can_go_back: false, can_go_forward: false, has_webview: false },
-  { id: 'qa-docs', title: 'Example Domain', url: 'https://example.com/', loading: false, can_go_back: true, can_go_forward: false, has_webview: true },
-  { id: 'qa-reader', title: 'Reader Preview', url: 'https://www.iana.org/help/example-domains', loading: false, can_go_back: false, can_go_forward: false, has_webview: true },
-]
-
-const visualQaStore = {
-  settings: new Map(),
-  tabs: new Map(VISUAL_QA_TABS.map(tab => [tab.id, { ...tab }])),
-  activeId: 'qa-home',
+export async function moveTabInMap(tabs, activeId, direction) {
+  const tabIds = [...tabs.keys()]
+  if (tabIds.length < 2 || !activeId) return { tabs, orderedIds: tabIds }
+  const currentIdx = tabIds.indexOf(activeId)
+  if (currentIdx === -1) return { tabs, orderedIds: tabIds }
+  const targetIdx = Math.max(0, Math.min(tabIds.length - 1, currentIdx + direction))
+  if (targetIdx === currentIdx) return { tabs, orderedIds: tabIds }
+  const [moved] = tabIds.splice(currentIdx, 1)
+  tabIds.splice(targetIdx, 0, moved)
+  return {
+    tabs: new Map(tabIds.map(id => [id, tabs.get(id)])),
+    orderedIds: tabIds,
+  }
 }
 
-function visualQaTheme() {
-  const params = new URLSearchParams(window.location?.search || '')
-  const value = params.get(VISUAL_QA_PARAM)
-  return ['dark', 'light'].includes(value) ? value : null
-}
-
-function isVisualQaMode() {
-  return Boolean(visualQaTheme())
+function logError(...args) {
+  console.error(...args)
 }
 
 function activeTab() { return state.tabs.get(state.activeId) || null }
@@ -129,7 +132,6 @@ function shortcutSettingsValue() {
 }
 
 function absorb(promise, fallbackMessage = 'Action failed') {
-  if (!promise || typeof promise.catch !== 'function') return promise
   promise.catch(error => {
     if (error) logError('Action failed', error)
     if (!error?.orbitHandled) showToast(formatError(error, fallbackMessage))
@@ -137,7 +139,6 @@ function absorb(promise, fallbackMessage = 'Action failed') {
 }
 
 async function command(name, payload = {}, fallbackMessage = 'Action failed') {
-  if (isVisualQaMode()) return visualQaCommand(name, payload)
   try {
     return await invoke(name, payload)
   } catch (error) {
@@ -151,62 +152,51 @@ async function command(name, payload = {}, fallbackMessage = 'Action failed') {
   }
 }
 
-async function visualQaCommand(name, payload = {}) {
-  switch (name) {
-    case 'get_setting':
-      if (payload.key === 'theme') return visualQaTheme()
-      return visualQaStore.settings.get(payload.key) || null
-    case 'set_setting':
-      visualQaStore.settings.set(payload.key, payload.value)
-      return null
-    case 'get_tabs':
-      return [...visualQaStore.tabs.values()]
-    case 'get_active_tab':
-      return visualQaStore.activeId
-    case 'create_tab': {
-      const id = `qa-tab-${visualQaStore.tabs.size + 1}`
-      const url = payload.url || ''
-      const tab = { id, title: url ? getNavigationTitle(url) : 'New Tab', url, loading: false, can_go_back: false, can_go_forward: false, has_webview: Boolean(url) }
-      visualQaStore.tabs.set(id, tab)
-      visualQaStore.activeId = id
-      return tab
-    }
-    case 'switch_tab':
-      visualQaStore.activeId = payload.tabId
-      return null
-    case 'reorder_tabs': {
-      const ordered = payload.orderedIds || []
-      visualQaStore.tabs = new Map(ordered.map(id => [id, visualQaStore.tabs.get(id)]).filter(([, tab]) => tab))
-      return null
-    }
-    case 'get_recent_pages':
-      return [
-        { title: 'Example Domain', url: 'https://example.com/' },
-        { title: 'IANA — Example Domains', url: 'https://www.iana.org/help/example-domains' },
-      ]
-    case 'get_bookmarks':
-    case 'search_history':
-      return []
-    case 'is_bookmarked':
-      return false
-    default:
-      return null
-  }
-}
-
 function isExpectedCommandError(error) {
   return typeof error === 'string' && error.startsWith('Blocked by Orbit:')
 }
 
-const findController = createFindController({ $, state, command, absorb, updateOverlay })
-const { openFindBar, closeFindBar, findNext, findPrev } = findController
+function showToast(message, tone = 'error') {
+  const region = $('toastRegion')
+  if (!region || !message) return
 
-function shortcutHandlers() {
-  return createShortcutHandlers({
-    $, absorb, command, state, createTab, closeTab, openFindBar, findNext,
-    toggleReaderMode, openBookmarksPanel, openHistoryPanel, openSettingsPanel,
-    cycleTab, moveActiveTab, switchTab, zoomIn, zoomOut, resetZoom, goHome: goHomeTab,
+  const toast = el('div', { className: `toast toast-${tone}`, text: message })
+  region.append(toast)
+  requestAnimationFrame(() => toast.classList.add('visible'))
+  window.setTimeout(() => {
+    toast.classList.remove('visible')
+    window.setTimeout(() => toast.remove(), 190)
+  }, 3200)
+}
+
+function showConfirmToast({ message, confirmLabel = 'Download', cancelLabel = 'Cancel', onConfirm, onCancel }) {
+  const region = $('toastRegion')
+  if (!region || !message) return
+
+  const toast = el('div', { className: 'toast toast-info toast-actions-wrap' })
+  const content = el('div', { className: 'toast-message', text: message })
+  const confirm = el('button', { className: 'toast-action toast-action-primary', type: 'button', text: confirmLabel })
+  const cancel = el('button', { className: 'toast-action', type: 'button', text: cancelLabel })
+  const actions = el('div', { className: 'toast-actions' }, [confirm, cancel])
+  toast.replaceChildren(content, actions)
+  region.append(toast)
+  requestAnimationFrame(() => toast.classList.add('visible'))
+
+  const close = () => {
+    toast.classList.remove('visible')
+    window.setTimeout(() => toast.remove(), 190)
+  }
+
+  confirm.addEventListener('click', () => {
+    try { onConfirm?.() } finally { close() }
   })
+  cancel.addEventListener('click', () => {
+    try { onCancel?.() } finally { close() }
+  })
+
+  window.setTimeout(() => {
+    if (toast.isConnected) close()
+  }, 12000)
 }
 
 function setIconButton(button, name, size = 18) { button.replaceChildren(icon(name, size)) }
@@ -281,7 +271,6 @@ function applyTheme(value) {
   state.resolvedTheme = resolvedThemeFor(state.theme)
   document.documentElement.dataset.theme = state.resolvedTheme
   document.documentElement.dataset.themePreference = state.theme
-  document.documentElement.style.colorScheme = state.resolvedTheme
   setIconButton($('btnTheme'), themeIcon(state.theme), 18)
   $('btnTheme').setAttribute('aria-label', themeButtonLabel())
   $('btnTheme').title = themeButtonLabel()
@@ -312,17 +301,11 @@ function chromeHeight() {
   if (state.chromeHeightCache !== null) return state.chromeHeightCache
   const value = getComputedStyle(document.documentElement).getPropertyValue('--chrome-height').trim()
   const parsed = Number.parseFloat(value)
-  state.chromeHeightCache = Number.isFinite(parsed) ? parsed : 124
+  state.chromeHeightCache = Number.isFinite(parsed) ? parsed : 130
   return state.chromeHeightCache
 }
 
 function activeOverlayElement() {
-  const settingsModal = $('settingsModal')
-  if (settingsModal && !settingsModal.classList.contains('hidden')) return settingsModal
-  const downloadModal = $('downloadModal')
-  if (downloadModal && !downloadModal.classList.contains('hidden')) return downloadModal
-  const aboutModal = $('aboutModal')
-  if (aboutModal && !aboutModal.classList.contains('hidden')) return aboutModal
   const history = $('historyPanel')
   if (history && !history.classList.contains('hidden')) return history
   const bookmarks = $('bookmarksPanel')
@@ -354,16 +337,12 @@ async function syncOverlayHeight() {
   }
 }
 
-function updateOverlay() { return syncOverlayHeight() }
+function updateOverlay() { absorb(syncOverlayHeight()) }
 
-let lastBrowserViewSyncTime = 0
 function queueBrowserViewSync() {
-  if (state.resizeFrame) return
+  if (state.resizeFrame) cancelAnimationFrame(state.resizeFrame)
   state.resizeFrame = requestAnimationFrame(() => {
     state.resizeFrame = 0
-    const now = Date.now()
-    if (now - lastBrowserViewSyncTime < BROWSER_VIEW_SYNC_INTERVAL_MS) return
-    lastBrowserViewSyncTime = now
     absorb(syncBrowserView())
   })
 }
@@ -474,6 +453,7 @@ function updateNav() {
   $('btnBookmark').disabled = !hasPage
   $('btnReload').classList.toggle('loading', Boolean(tab?.loading))
 
+  // Persistent security pill + scheme distinction (Slice 1)
   const lower = String(url).toLowerCase()
   const isHttps = lower.startsWith('https://')
   const isHttp = lower.startsWith('http://')
@@ -490,10 +470,7 @@ function updateNav() {
   $('lockIcon').style.color = isHttps ? 'var(--teal)' : 'var(--quiet)'
 
   wrap?.setAttribute('data-url-preview', hasPage ? url : '')
-  const tabpanel = $('newTabPage')
-  tabpanel.classList.toggle('hidden', hasPage && !error)
-  if (tab?.id) tabpanel.setAttribute('aria-labelledby', `tab-btn-${tab.id}`)
-  else tabpanel.removeAttribute('aria-labelledby')
+  $('newTabPage').classList.toggle('hidden', hasPage && !error)
   renderErrorState()
   updateChromeProgress()
   absorb(refreshBookmarkIcon())
@@ -548,12 +525,8 @@ function deleteShortcutAt(index) {
   if (index < 0 || index >= state.shortcuts.length) return
   state.shortcuts.splice(index, 1)
   renderShortcuts()
+  // Persist using the same settings path as the editor
   absorb(saveSetting('shortcuts', JSON.stringify(state.shortcuts), 'Could not save shortcut deletion'))
-}
-
-function clearTabEnhancements(tabId) {
-  state.tabZoomLevels.delete(tabId)
-  state.readerModeTabs.delete(tabId)
 }
 
 // --- Zoom Memory (Per-origin) ---
@@ -586,97 +559,76 @@ async function saveZoomMemory() {
   }
 }
 
-function clampZoomLevel(value) {
-  if (!Number.isFinite(value)) return DEFAULT_ZOOM_LEVEL
-  const rounded = Math.round(value * 10) / 10
-  return Math.min(MAX_ZOOM_LEVEL, Math.max(MIN_ZOOM_LEVEL, rounded))
-}
-
-function savedZoomForUrl(url) {
-  const origin = getOrigin(url)
-  if (!origin) return DEFAULT_ZOOM_LEVEL
-  return clampZoomLevel(state.zoomMemory.get(origin) ?? DEFAULT_ZOOM_LEVEL)
-}
-
-async function persistZoomForUrl(url, zoomLevel) {
-  const origin = getOrigin(url)
+function saveCurrentZoom(forcedValue = null) {
+  const tab = activeTab()
+  if (!tab?.url) return
+  const origin = getOrigin(tab.url)
   if (!origin) return
-  state.zoomMemory.set(origin, clampZoomLevel(zoomLevel))
-  await saveZoomMemory()
+
+  // For simplicity in this implementation, we store a coarse value.
+  // In a fuller version we would read the actual current zoom from the webview.
+  const value = forcedValue !== null ? forcedValue : 1.0
+  state.zoomMemory.set(origin, value)
+  absorb(saveZoomMemory())
 }
 
-function currentZoomLevelForTab(tabId = state.activeId) {
-  const tab = state.tabs.get(tabId)
-  if (!tab?.url) return DEFAULT_ZOOM_LEVEL
-  return clampZoomLevel(state.tabZoomLevels.get(tabId) ?? savedZoomForUrl(tab.url))
+function applyZoomToActiveTab() {
+  const tab = activeTab()
+  if (!tab?.url) return
+  const origin = getOrigin(tab.url)
+  if (!origin) return
+
+  const savedZoom = state.zoomMemory.get(origin)
+  if (!savedZoom || savedZoom === 1.0) return
+
+  // Apply saved zoom using direct eval (now supported via eval_on_tab)
+  const factor = savedZoom.toFixed(1)
+  absorb(command('eval_on_tab', { tabId: state.activeId, script: `document.body.style.zoom = '${factor}';` }))
 }
 
-async function setTabZoomLevel(tabId, zoomLevel) {
-  const tab = state.tabs.get(tabId)
-  if (!tab?.id || !isWebUrl(tab.url)) return DEFAULT_ZOOM_LEVEL
-  const applied = await command(
-    'set_tab_zoom',
-    { tabId, zoomLevel: clampZoomLevel(zoomLevel) },
-    'Could not update zoom'
-  )
-  state.tabZoomLevels.set(tabId, applied)
-  await persistZoomForUrl(tab.url, applied)
-  return applied
-}
-
-function applySavedZoomToTab(tabId) {
-  const tab = state.tabs.get(tabId)
-  if (!tab?.id || !isWebUrl(tab.url)) return Promise.resolve(DEFAULT_ZOOM_LEVEL)
-  return setTabZoomLevel(tabId, savedZoomForUrl(tab.url))
-}
-
-function zoomIn() {
-  return setTabZoomLevel(state.activeId, currentZoomLevelForTab() + ZOOM_STEP)
-}
-
-function zoomOut() {
-  return setTabZoomLevel(state.activeId, currentZoomLevelForTab() - ZOOM_STEP)
-}
-
-function resetZoom() {
-  return setTabZoomLevel(state.activeId, DEFAULT_ZOOM_LEVEL)
-}
-
-function applyReaderModeToTab(tabId) {
-  const tab = state.tabs.get(tabId)
-  if (!tab?.id || !isWebUrl(tab.url)) return Promise.resolve()
-  const enabled = state.readerModeTabs.get(tabId) === true
-  return command(
-    'set_reader_mode',
-    { tabId, enabled },
-    enabled ? 'Could not enable reader mode' : 'Could not disable reader mode'
-  )
-}
-
-function syncTabEnhancements(tabId) {
-  return Promise.all([
-    applySavedZoomToTab(tabId),
-    applyReaderModeToTab(tabId),
-  ])
-}
+// --- Reader Mode (Local only) ---
+let readerModeActive = false
 
 function toggleReaderMode() {
   const tab = activeTab()
-  if (!tab?.id || !isWebUrl(tab.url)) return
-  const nextEnabled = state.readerModeTabs.get(tab.id) !== true
-  state.readerModeTabs.set(tab.id, nextEnabled)
-  absorb(
-    command(
-      'set_reader_mode',
-      { tabId: tab.id, enabled: nextEnabled },
-      nextEnabled ? 'Could not enable reader mode' : 'Could not disable reader mode'
-    ).then(() => {
-      showToast(nextEnabled ? 'Reader mode on' : 'Reader mode off', 'info')
-    }).catch(error => {
-      state.readerModeTabs.set(tab.id, !nextEnabled)
-      throw error
-    })
-  )
+  if (!tab) return
+
+  readerModeActive = !readerModeActive
+
+  const readerCSS = `
+    :root { --reader-max-width: 680px; }
+    body {
+      max-width: var(--reader-max-width) !important;
+      margin: 40px auto !important;
+      padding: 0 20px !important;
+      font-family: Georgia, 'Times New Roman', serif !important;
+      font-size: 18px !important;
+      line-height: 1.7 !important;
+      color: #222 !important;
+      background: #f9f5eb !important;
+    }
+    img, video, iframe { max-width: 100%; height: auto; }
+    pre, code { font-family: ui-monospace, monospace; }
+    h1, h2, h3 { font-family: -apple-system, system-ui, sans-serif; }
+  `.replace(/\s+/g, ' ')
+
+  if (readerModeActive) {
+    absorb(command('eval_on_tab', { tabId: state.activeId, script: `
+      (function() {
+        const style = document.createElement('style');
+        style.id = 'orbit-reader-mode';
+        style.textContent = \`${readerCSS}\`;
+        document.head.appendChild(style);
+      })();
+    ` }))
+    showToast('Reader mode on')
+  } else {
+    absorb(command('eval_on_tab', { tabId: state.activeId, script: `
+      const style = document.getElementById('orbit-reader-mode');
+      if (style) style.remove();
+    ` }))
+    showToast('Reader mode off')
+  }
 }
 
 function closeAllPanels() {
@@ -707,38 +659,7 @@ async function switchTab(tabId) {
   state.activeId = tabId
   renderTabs()
   updateNav()
-  absorb(syncTabEnhancements(tabId))
   absorb(loadRecentPages())
-}
-
-async function persistTabOrder(orderedIds = []) {
-  const currentIds = new Set(state.tabs.keys())
-  if (orderedIds.length !== state.tabs.size || orderedIds.some(id => !currentIds.has(id))) return
-  state.tabs = new Map(orderedIds.map(id => [id, state.tabs.get(id)]))
-  renderTabs()
-  await command('reorder_tabs', { orderedIds }, 'Could not save tab order')
-}
-
-export async function moveTabInMap(tabs, activeId, direction) {
-  const tabIds = [...tabs.keys()]
-  if (tabIds.length < 2 || !activeId) return { tabs, orderedIds: tabIds }
-  const currentIdx = tabIds.indexOf(activeId)
-  if (currentIdx === -1) return { tabs, orderedIds: tabIds }
-  const targetIdx = Math.max(0, Math.min(tabIds.length - 1, currentIdx + direction))
-  if (targetIdx === currentIdx) return { tabs, orderedIds: tabIds }
-  const [active] = tabIds.splice(currentIdx, 1)
-  tabIds.splice(targetIdx, 0, active)
-  return {
-    tabs: new Map(tabIds.map(id => [id, tabs.get(id)])),
-    orderedIds: tabIds,
-  }
-}
-
-async function moveActiveTab(direction) {
-  const { orderedIds } = await moveTabInMap(state.tabs, state.activeId, direction)
-  await persistTabOrder(orderedIds)
-  const activeButton = $('tabsContainer').querySelector(`[data-tab-id="${state.activeId}"]`)
-  activeButton?.focus()
 }
 
 async function closeTab(tabId) {
@@ -747,7 +668,6 @@ async function closeTab(tabId) {
   const newActiveId = await command('close_tab', { tabId }, 'Could not close the tab')
   state.tabs.delete(tabId)
   state.errorPages.delete(tabId)
-  clearTabEnhancements(tabId)
 
   if (state.tabs.size === 0) {
     await createTab()
@@ -763,7 +683,6 @@ async function closeTab(tabId) {
 
   renderTabs()
   updateNav()
-  if (state.activeId) absorb(syncTabEnhancements(state.activeId))
 }
 
 async function navigate(rawUrl) {
@@ -813,7 +732,6 @@ async function openHistoryPanel() {
   renderHistory(entries)
   $('historyPanel').classList.remove('hidden')
   updateOverlay()
-  $('historySearch').focus()
 }
 
 async function openBookmarksPanel() {
@@ -822,7 +740,6 @@ async function openBookmarksPanel() {
   renderBookmarks(bookmarks)
   $('bookmarksPanel').classList.remove('hidden')
   updateOverlay()
-  $('closeBookmarks').focus()
 }
 
 async function toggleBookmark() {
@@ -846,32 +763,20 @@ async function toggleBookmark() {
 
 async function handleDownload(url) {
   const filename = url.split('/').pop()?.split('?')[0] || 'file'
-  state.pendingDownloadUrl = url
-  $('downloadMessage').textContent = `Save ${filename} to Downloads on this Mac?`
-  openModal($('downloadModal'), '#downloadConfirm')
-  updateOverlay()
-}
-
-async function confirmDownload() {
-  const url = state.pendingDownloadUrl
-  if (!url) return
-  state.pendingDownloadUrl = null
-  closeModal($('downloadModal'), $('addressInput'))
-  updateOverlay()
-  try {
-    await invoke('download_file', { url })
-  } catch (error) {
-    logError('download_file failed', error)
-    showToast(formatError(error, 'Download failed'))
-  }
-}
-
-function cancelDownload() {
-  const hadPending = Boolean(state.pendingDownloadUrl)
-  state.pendingDownloadUrl = null
-  closeModal($('downloadModal'), $('addressInput'))
-  updateOverlay()
-  if (hadPending) showToast('Download canceled', 'info')
+  showConfirmToast({
+    message: `Download ${filename}?`,
+    onConfirm: () => {
+      absorb((async () => {
+        try {
+          await invoke('download_file', { url })
+        } catch (error) {
+          logError('download_file failed', error)
+          showToast(formatError(error, 'Download failed'))
+        }
+      })())
+    },
+    onCancel: () => showToast('Download canceled', 'info'),
+  })
 }
 
 export function applyLoadedTabToMap(tabs, payload) {
@@ -896,7 +801,6 @@ export function applyProgressToMap(tabs, payload) {
 }
 
 async function setupListeners() {
-  if (isVisualQaMode()) return
   const progress = ({ payload }) => applyTabProgress(payload)
   const loaded = ({ payload }) => {
     clearLoadTimeout(payload.id)
@@ -904,7 +808,6 @@ async function setupListeners() {
     clearTabError(payload.id)
     queueRenderTabs()
     if (payload.id === state.activeId) updateNav()
-    absorb(syncTabEnhancements(payload.id))
     absorb(loadRecentPages())
   }
   const blocked = ({ payload }) => {
@@ -925,8 +828,10 @@ async function setupListeners() {
   const favicon = ({ payload }) => {
     const tab = state.tabs.get(payload.id)
     if (tab) {
-      tab.favicon_url = payload.faviconUrl || null
-      tab.favicon_fallback = null
+      // Payload contains "standard_url google_url" — split for fallback chain
+      const urls = (payload.faviconUrl || '').split(' ')
+      tab.favicon_url = urls[0] || null
+      tab.favicon_fallback = urls[1] || null
       queueRenderTabs()
     }
   }
@@ -971,7 +876,24 @@ function applyTabProgress(payload) {
 }
 
 function handleNativeShortcut(action) {
-  const handlers = shortcutHandlers()
+  const handlers = {
+    'new-tab': () => absorb(createTab()),
+    'close-tab': () => absorb(closeTab(state.activeId)),
+    'focus-address': () => $('addressInput').focus(),
+    reload: () => absorb(command('reload_tab', { tabId: state.activeId }, 'Could not reload this page')),
+    stop: () => absorb(command('stop_tab', { tabId: state.activeId }, 'Could not stop loading')),
+    home: () => absorb(command('go_home_tab', { tabId: state.activeId }, 'Could not open home')),
+    back: () => absorb(command('go_back', { tabId: state.activeId }, 'Could not go back')),
+    forward: () => absorb(command('go_forward', { tabId: state.activeId }, 'Could not go forward')),
+    find: () => openFindBar(),
+    'zoom-in': () => { absorb(command('zoom_tab', { tabId: state.activeId, zoomIn: true })); saveCurrentZoom(); },
+    'zoom-out': () => { absorb(command('zoom_tab', { tabId: state.activeId, zoomIn: false })); saveCurrentZoom(); },
+    'actual-size': () => { absorb(command('reset_zoom', { tabId: state.activeId })); saveCurrentZoom(1.0); },
+    'toggle-reader': () => toggleReaderMode(),
+    'show-bookmarks': () => absorb(openBookmarksPanel()),
+    'show-history': () => absorb(openHistoryPanel()),
+    settings: () => openSettingsPanel(),
+  }
   handlers[action]?.()
 }
 
@@ -980,19 +902,6 @@ async function clearHistory() {
   renderHistory([])
   closeAllPanels()
   showToast('History cleared', 'success')
-}
-
-function requestClearHistory() {
-  closeAllPanels()
-  showConfirmToast({
-    message: 'Clear local browsing history from this Mac?',
-    confirmLabel: 'Clear History',
-    cancelLabel: 'Keep History',
-    focusCancel: true,
-    returnFocusTo: $('btnMenu'),
-    onConfirm: () => absorb(clearHistory()),
-    onCancel: () => showToast('History kept', 'info'),
-  })
 }
 
 async function deleteBookmark(id) {
@@ -1016,7 +925,6 @@ function queueHistorySearch(query) {
 }
 
 async function getSetting(key) {
-  if (isVisualQaMode()) return visualQaCommand('get_setting', { key })
   try {
     return await invoke('get_setting', { key })
   } catch (error) {
@@ -1036,7 +944,7 @@ async function loadPreferences() {
     getSetting('startup_behavior'),
     getSetting('shortcuts'),
   ])
-  applyTheme(theme ? normalizeTheme(theme) : 'dark')
+  applyTheme(normalizeTheme(theme))
   state.searchEngine = normalizeSearchEngine(searchEngine)
   state.startupBehavior = normalizeStartupBehavior(startupBehavior)
   state.shortcuts = parseShortcuts(shortcuts)
@@ -1085,6 +993,66 @@ async function changeStartupBehavior(value) {
   }
 }
 
+const MODAL_FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+let activeModal = null
+let activeModalTrigger = null
+let activeModalFocusHandler = null
+
+function collectFocusables(modal) {
+  return Array.from(modal.querySelectorAll(MODAL_FOCUSABLE_SELECTOR)).filter(
+    element => element.tabIndex >= 0 && !element.hasAttribute('disabled')
+  )
+}
+
+function bindModalFocusTrap(modal) {
+  const focusables = collectFocusables(modal)
+  if (!focusables.length) return
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+
+  if (!focusables.includes(document.activeElement)) {
+    first.focus()
+  }
+
+  activeModalFocusHandler = event => {
+    if (event.key !== 'Tab' || focusables.length === 0) return
+    if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    } else if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    }
+  }
+
+  modal.addEventListener('keydown', activeModalFocusHandler)
+}
+
+function closeModal(modal) {
+  if (!modal) return
+  modal.classList.add('hidden')
+  if (activeModalFocusHandler) {
+    modal.removeEventListener('keydown', activeModalFocusHandler)
+  }
+  activeModalFocusHandler = null
+  activeModal = null
+  if (activeModalTrigger instanceof HTMLElement) {
+    activeModalTrigger.focus()
+  }
+  activeModalTrigger = null
+}
+
+function openModal(modal, fallbackSelector) {
+  if (!modal) return
+  activeModal = modal
+  activeModalTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  modal.classList.remove('hidden')
+  const fallback = fallbackSelector ? modal.querySelector(fallbackSelector) : null
+  if (fallback instanceof HTMLElement) fallback.focus()
+  bindModalFocusTrap(modal)
+}
+
 async function saveShortcutEdits() {
   const rows = [...document.querySelectorAll('[data-shortcut-index]')]
   const next = rows.map(row => {
@@ -1111,21 +1079,6 @@ async function saveShortcutEdits() {
   }
 }
 
-async function goHomeTab() {
-  if (!state.activeId) return
-  clearTabError(state.activeId)
-  clearTabEnhancements(state.activeId)
-  await command('go_home_tab', { tabId: state.activeId }, 'Could not open home')
-  const tab = activeTab()
-  if (tab) {
-    tab.url = ''
-    tab.title = 'New Tab'
-    tab.loading = false
-  }
-  renderTabs()
-  updateNav()
-}
-
 function syncSettingsControls() {
   const theme = $('settingTheme')
   const searchEngine = $('settingSearchEngine')
@@ -1140,17 +1093,16 @@ function openSettingsPanel() {
   closeAllPanels()
   syncSettingsControls()
   openModal($('settingsModal'), '#settingsClose')
-  updateOverlay()
 }
 
 function closeSettingsPanel() {
-  closeModal($('settingsModal'), $('addressInput'))
-  updateOverlay()
+  closeModal($('settingsModal'))
 }
 
 async function loadRecentPages() {
   const container = $('recentPages')
   if (!container) return
+  if (!container.children.length) renderRecentPages(container, [])
   try {
     const entries = await invoke('get_history', { limit: 6, offset: 0 })
     renderRecentPages(container, entries)
@@ -1178,7 +1130,15 @@ function retryErrorPage() {
 
 function errorPageHome() {
   clearTabError(state.activeId)
-  absorb(goHomeTab())
+  absorb(command('go_home_tab', { tabId: state.activeId }, 'Could not open home'))
+  const tab = activeTab()
+  if (tab) {
+    tab.url = ''
+    tab.title = 'New Tab'
+    tab.loading = false
+  }
+  renderTabs()
+  updateNav()
 }
 
 function handleAddressKey(event) {
@@ -1197,7 +1157,7 @@ function handleShortcut(event) {
 
   if (intent.type === 'escape') {
     if (!$('findBar').classList.contains('hidden')) {
-      absorb(closeFindBar())
+      closeFindBar()
       return
     }
     closeAllPanels()
@@ -1205,11 +1165,56 @@ function handleShortcut(event) {
   }
 
   event.preventDefault()
-  dispatchShortcutIntent(intent, shortcutHandlers())
+  runShortcutIntent(intent)
 }
 
 export function getShortcutIntent(event) {
-  return resolveShortcutIntent(event)
+  if (event.key === 'Escape') return { type: 'escape' }
+  const mod = event.metaKey || event.ctrlKey
+  if (!mod) return null
+
+  const key = event.key.toLowerCase()
+  if (isEditableTarget(event.target) && !EDITABLE_SHORTCUT_KEYS.has(key)) return null
+  if ((event.metaKey || event.ctrlKey) && event.altKey && event.shiftKey && event.key === 'ArrowRight') {
+    return { type: 'move-active-tab', direction: 1 }
+  }
+  if ((event.metaKey || event.ctrlKey) && event.altKey && event.shiftKey && event.key === 'ArrowLeft') {
+    return { type: 'move-active-tab', direction: -1 }
+  }
+  if (event.ctrlKey && !event.metaKey && key === 'tab') {
+    return { type: event.shiftKey ? 'previous-tab' : 'next-tab' }
+  }
+  if (event.key >= '1' && event.key <= '9') {
+    return { type: 'switch-tab-index', index: Number.parseInt(event.key, 10) - 1 }
+  }
+  return SHORTCUT_ACTIONS.get(`${event.shiftKey ? 'shift+' : ''}${key}`) || null
+}
+
+function runShortcutIntent(intent) {
+  const handlers = {
+    'new-tab': () => absorb(createTab()),
+    home: () => absorb(command('go_home_tab', { tabId: state.activeId }, 'Could not open home')),
+    'close-tab': () => absorb(closeTab(state.activeId)),
+    'focus-address': () => $('addressInput').focus(),
+    reload: () => absorb(command('reload_tab', { tabId: state.activeId }, 'Could not reload this page')),
+    find: () => openFindBar(),
+    'find-next': () => findNext(),
+    'zoom-in': () => absorb(command('zoom_tab', { tabId: state.activeId, zoomIn: true })),
+    'zoom-out': () => absorb(command('zoom_tab', { tabId: state.activeId, zoomIn: false })),
+    'reset-zoom': () => absorb(command('reset_zoom', { tabId: state.activeId })),
+    'toggle-reader': () => toggleReaderMode(),
+    stop: () => absorb(command('stop_tab', { tabId: state.activeId }, 'Could not stop loading')),
+    back: () => absorb(command('go_back', { tabId: state.activeId }, 'Could not go back')),
+    forward: () => absorb(command('go_forward', { tabId: state.activeId }, 'Could not go forward')),
+    'previous-tab': () => cycleTab(-1),
+    'next-tab': () => cycleTab(1),
+    'move-active-tab': () => absorb(moveActiveTab(intent.direction)),
+    'switch-tab-index': () => {
+      const tab = [...state.tabs.values()][intent.index]
+      if (tab) absorb(switchTab(tab.id))
+    },
+  }
+  handlers[intent.type]?.()
 }
 
 function cycleTab(direction) {
@@ -1220,14 +1225,61 @@ function cycleTab(direction) {
   absorb(switchTab(tabIds[newIdx]))
 }
 
-function showAboutPanel() {
-  openModal($('aboutModal'), '#aboutClose')
+async function persistTabOrder(orderedIds) {
+  const currentIds = new Set(state.tabs.keys())
+  if (orderedIds.length !== state.tabs.size || orderedIds.some(id => !currentIds.has(id))) return
+  state.tabs = new Map(orderedIds.map(id => [id, state.tabs.get(id)]))
+  renderTabs()
+  await command('reorder_tabs', { orderedIds }, 'Could not save tab order')
+}
+
+async function moveActiveTab(direction) {
+  const { orderedIds } = await moveTabInMap(state.tabs, state.activeId, direction)
+  await persistTabOrder(orderedIds)
+  const activeButton = $('tabsContainer').querySelector(`[data-tab-id="${state.activeId}"]`)
+  activeButton?.focus()
+}
+
+// ── Find in Page ───────────────────────────────────────────────────────────────
+
+function openFindBar() {
+  $('findBar').classList.remove('hidden')
+  focusFindInput({ select: true })
   updateOverlay()
 }
 
-function closeAboutPanel() {
-  closeModal($('aboutModal'), $('addressInput'))
+function closeFindBar() {
+  $('findBar').classList.add('hidden')
+  absorb(command('find_in_page', { tabId: state.activeId, query: '', backwards: false }))
   updateOverlay()
+}
+
+function focusFindInput({ select = false } = {}) {
+  const input = $('findInput')
+  input.focus()
+  if (select) input.select()
+}
+
+function findNext() {
+  const query = $('findInput').value.trim()
+  focusFindInput()
+  if (!query) return
+  absorb(command('find_in_page', { tabId: state.activeId, query, backwards: false }))
+}
+
+function findPrev() {
+  const query = $('findInput').value.trim()
+  focusFindInput()
+  if (!query) return
+  absorb(command('find_in_page', { tabId: state.activeId, query, backwards: true }))
+}
+
+function showAboutPanel() {
+  openModal($('aboutModal'), '#aboutClose')
+}
+
+function closeAboutPanel() {
+  closeModal($('aboutModal'))
 }
 
 function cleanupListeners() {
@@ -1251,16 +1303,23 @@ function cleanupListeners() {
 }
 
 async function init() {
-  installUnhandledRejectionHandler()
   setIconButton($('closeHistory'), 'close', 14)
   setIconButton($('closeBookmarks'), 'close', 14)
   setIconButton($('settingsClose'), 'close', 14)
-  setIconButton($('downloadCancelIcon'), 'close', 14)
   setIconButton($('findPrev'), 'chevronUp', 14)
   setIconButton($('findNext'), 'down', 14)
   setIconButton($('findClose'), 'close', 14)
   setupSystemThemeListener()
-  await Promise.all([loadPreferences(), loadZoomMemory()])
+
+  // Catch unhandled Promise rejections so the UI never silently stalls
+  window.addEventListener('unhandledrejection', (event) => {
+    logError('Unhandled promise rejection', event.reason)
+    if (event.reason && !event.reason?.orbitHandled) {
+      showToast('Unexpected error — Orbit recovered.')
+    }
+  })
+
+  await loadPreferences()
   await loadRecentPages()
   try {
     $('aboutVersion').textContent = `Version ${await getVersion()}`
@@ -1271,14 +1330,13 @@ async function init() {
     $, absorb, win, closeAllPanels, closeTab, createTab, deleteBookmark,
     handleAddressKey, handleShortcut, navigate, openBookmarksPanel,
     openHistoryPanel, queueBrowserViewSync, queueHistorySearch, cleanupListeners,
-    switchTab, toggleBookmark, toggleTheme, clearHistory, requestClearHistory,
+    switchTab, toggleBookmark, toggleTheme, clearHistory,
     closeFindBar, findNext, findPrev,
     updateOverlay, closeAboutPanel, openSettingsPanel, closeSettingsPanel,
     setThemePreference, changeSearchEngine, changeStartupBehavior,
     saveShortcutEdits, handleNewTabSearch, retryErrorPage, errorPageHome,
-    copyCurrentAddress, deleteShortcutAt, confirmDownload, cancelDownload,
-    persistTabOrder,
-    goHome: () => absorb(goHomeTab()),
+    copyCurrentAddress, deleteShortcutAt, persistTabOrder,
+    goHome: () => absorb(command('go_home_tab', { tabId: state.activeId }, 'Could not open home')),
     goBack: () => absorb(command('go_back', { tabId: state.activeId }, 'Could not go back')),
     goForward: () => absorb(command('go_forward', { tabId: state.activeId }, 'Could not go forward')),
     reload: () => absorb(command('reload_tab', { tabId: state.activeId }, 'Could not reload this page')),
@@ -1302,7 +1360,6 @@ async function init() {
     const active = activeTab()
     if (active && isWebUrl(active.url)) {
       absorb(command('switch_tab', { tabId: active.id }, 'Could not restore active tab'))
-      absorb(syncTabEnhancements(active.id))
     }
     return
   }
