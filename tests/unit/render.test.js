@@ -29,16 +29,7 @@ test('renderTabs marks loading tabs as busy and updates count', () => {
   assert.equal(tabCount.textContent, '2 tabs')
   assert.equal(container.children.length, 2)
   assert.equal(container.children[0].classList.contains('loading'), true)
-  const activeTab = container.children[0].querySelector('.tab-main')
-  const inactiveTab = container.children[1].querySelector('.tab-main')
-  assert.equal(activeTab.getAttribute('role'), 'tab')
-  assert.equal(activeTab.getAttribute('id'), 'tab-btn-t1')
-  assert.equal(activeTab.getAttribute('aria-controls'), 'newTabPage')
-  assert.equal(activeTab.getAttribute('aria-selected'), 'true')
-  assert.equal(activeTab.getAttribute('tabindex'), '0')
-  assert.equal(inactiveTab.getAttribute('aria-selected'), 'false')
-  assert.equal(inactiveTab.getAttribute('tabindex'), '-1')
-  assert.equal(activeTab.getAttribute('aria-busy'), 'true')
+  assert.equal(container.children[0].querySelector('.tab-main').getAttribute('aria-busy'), 'true')
 })
 
 test('panel renderers show useful empty states', () => {
@@ -79,4 +70,16 @@ test('recent pages render openable cards', () => {
   assert.equal(container.children.length, 1)
   assert.equal(container.children[0].dataset.recentUrl, 'https://www.rust-lang.org/learn')
   assert.equal(container.children[0].querySelector('.recent-card-url').textContent, 'rust-lang.org')
+})
+
+test('recent pages empty state uses neutral useful suggestions', () => {
+  const document = installDom()
+  const container = document.createElement('div')
+
+  renderRecentPages(container, [])
+  const suggestions = [...container.querySelectorAll('.recent-suggestion-pill')]
+    .map(button => button.querySelector('span').textContent)
+
+  assert.deepEqual(suggestions, ['GitHub', 'YouTube', 'Wikipedia'])
+  assert.equal(suggestions.some(title => /nodaysidle|gitlab/i.test(title)), false)
 })

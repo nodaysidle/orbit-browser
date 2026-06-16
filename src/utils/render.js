@@ -45,7 +45,7 @@ export function renderBookmarksList(list, bookmarks = []) {
 }
 
 export function renderShortcutGrid(container, shortcuts = []) {
-  const tones = ['tone-blue', 'tone-violet', 'tone-gold', 'tone-teal']
+  const tones = ['tone-blue', 'tone-red', 'tone-gold', 'tone-teal']
   container.replaceChildren(...shortcuts.map((shortcut, index) => {
     const btn = el('button', {
       className: `shortcut-btn ${tones[index % tones.length]}`,
@@ -72,16 +72,16 @@ export function renderShortcutGrid(container, shortcuts = []) {
 export function renderRecentPages(container, entries = []) {
   if (!entries.length) {
     const suggestions = [
-      { title: 'NODAYSIDLE', url: 'https://github.com/nodaysidle' },
-      { title: 'Tauri Docs', url: 'https://tauri.app' },
-      { title: 'MDN Web Docs', url: 'https://developer.mozilla.org' },
+      { title: 'GitHub', url: 'https://github.com' },
+      { title: 'YouTube', url: 'https://youtube.com' },
+      { title: 'Wikipedia', url: 'https://wikipedia.org' },
     ]
     container.replaceChildren(
       el('div', { className: 'recent-empty recent-empty-with-suggestions' }, [
         icon('clock', 16),
-        el('span', { text: 'Start with a clean orbit.' }),
+        el('span', { text: 'Recent pages will appear here.' }),
       ]),
-      el('div', { className: 'recent-suggestions' }, suggestions.map(s => 
+      el('div', { className: 'recent-suggestions' }, suggestions.map(s =>
         el('button', {
           className: 'recent-suggestion-pill',
           type: 'button',
@@ -139,22 +139,13 @@ function tabRow(tab, activeId) {
   const title = tab.title || 'New Tab'
   const active = tab.id === activeId ? ' active' : ''
   const loading = tab.loading ? ' loading' : ''
-  const selected = tab.id === activeId
-  const row = el('div', { className: `tab ${tone}${active}${loading}`, attrs: { draggable: 'true', role: 'presentation' } })
+  const row = el('div', { className: `tab ${tone}${active}${loading}`, attrs: { draggable: 'true' } })
   const main = el('button', {
     className: 'tab-main',
       type: 'button',
       title: tab.url || title,
       dataset: { tabId: tab.id },
-      attrs: {
-        role: 'tab',
-        id: `tab-btn-${tab.id}`,
-        'aria-selected': selected ? 'true' : 'false',
-        'aria-controls': 'newTabPage',
-        'aria-label': `Switch to ${title}`,
-        'aria-busy': tab.loading ? 'true' : false,
-        tabindex: selected ? '0' : '-1',
-      },
+      attrs: { 'aria-label': `Switch to ${title}`, 'aria-busy': tab.loading ? 'true' : false },
   }, [
     renderMonogram(tab),
     el('span', { className: 'tab-title', text: title }),

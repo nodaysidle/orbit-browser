@@ -1,258 +1,165 @@
 # Orbit
 
-**A focused macOS browser — native tabs, local-first, dark by default.**
+**A native macOS browser — WKWebView tabs, local-first data, keyboard-first chrome.**
 
-Minimal chrome, full web. WKWebView child webviews on Tauri 2. No Electron, no telemetry, no noise.
+Orbit is a lightweight browser built with Tauri 2 and native WKWebView child webviews. It keeps the browser shell small, stores user data locally, and avoids Electron, telemetry, and account lock-in.
 
-<p>
-  <img src="https://img.shields.io/badge/platform-macOS-black?style=flat-square&logo=apple" alt="macOS">
-  <img src="https://img.shields.io/badge/tauri-2.10-f0b35f?style=flat-square&logo=tauri" alt="Tauri 2.10">
-  <img src="https://img.shields.io/badge/rust-stable-8b7355?style=flat-square&logo=rust" alt="Rust">
-  <img src="https://img.shields.io/badge/license-MIT-7b8cac?style=flat-square" alt="MIT">
-</p>
-
----
-
-## Premium Stress-Test Build – June 2026
-
-This build is the current Orbit source and package line for NDI stress testing. The older GitHub package is superseded; release artifacts now target `v1.0.5`. Public notarization is intentionally deferred until after NDI manual stress testing.
-
-### What improved in this pass
-
-- **Settings/menu native overlay fixed** — the three-dot menu now reserves native WKWebView overlay space before revealing its dropdown, so Settings is visible and clickable above real page content.
-- **New-tab polish pass** — the search pill is now one coherent rounded command control with no inner native outline, and the `+` tab button has a stronger premium squircle treatment.
-- **Dark-by-default fixed** — first-run theme now matches the product claim instead of falling back to a mismatched saved/default state.
-- **Reader Mode upgraded** — replaced the weak CSS-only restyle with a reversible local extraction overlay that targets `article`, `main`, `[role="main"]`, or body fallback and strips noisy page chrome.
-- **Runtime tab reorder proof** — added keyboard active-tab reorder (`Cmd+Opt+Shift+←/→`) and runtime smoke evidence that persisted tab order survives through SQLite session state.
-- **Visual QA added** — new deterministic Playwright QA captures dark/light screenshots, checks overflow, proves visible keyboard focus, and records frame timing.
-- **Smoke coverage expanded** — built-app smoke now covers real navigation, domain blocking, session order, find, reader mode, zoom/reset, reload/stop, and download cancel/no-file behavior.
-- **Docs corrected** — test count and release notes now match the current source gates.
-
-### Current verified quality gates
-
-- `npm test`
-- `npm run check`
-- `npm run qa:visual`
-- `scripts/premium-visual-qa.sh`
-- `npm run tauri -- build --bundles dmg`
-- `codesign --verify --deep --strict --verbose=2 src-tauri/target/release/bundle/macos/Orbit.app`
-- `scripts/smoke-runtime.sh` with `ORBIT_APP_PATH` pointed at the built app
-
----
-
-## Major Update – May 2026: Comprehensive UI/UX Overhaul
-
-This release represents a major, design-driven improvement to Orbit's daily usability while strictly maintaining the project's core constraints and identity (Vanilla JavaScript only, no new Rust dependencies, preserved frontend module structure, WKWebView child webviews, locked-down CSP, and the distinctive warm amber glassmorphism aesthetic).
-
-### Completed Work
-
-- Full independent code audit + detailed design document (produced via structured review process and fully approved)
-- Implementation of the complete approved 7-slice UI/UX polish plan, including:
-  - Tab bar overflow affordances with elegant edge gradient masks and dynamic indicators
-  - Address bar enhancements (persistent security pill, one-click copy button, click-to-copy on preview tooltip)
-  - New-tab page elevation (subtle breathing animation on the orbiting rings logo, richer empty states with quick suggestions, inline shortcut deletion)
-  - Full light theme visual parity pass (native macOS feel rather than inverted dark)
-  - Accessibility, micro-interactions, keyboard discoverability, and motion polish
-  - Persisted drag-to-reorder plus keyboard tab reorder for accessible runtime QA
-- Five additional high-value features:
-  1. **Per-origin zoom memory** — Zoom levels now persist per site
-  2. **Smart clean link copying** — Automatically strips common tracking parameters (`utm_*`, `fbclid`, `gclid`, etc.)
-  3. **Local-only Reader Mode** — Toggle with `Cmd+Shift+R` for a clean, comfortable reading experience
-  4. **Improved find-in-page** — Better feedback and structure
-  5. **Tab hibernation foundation** + supporting infrastructure (`eval_on_tab` command)
-- Multiple verified clean production builds with the app installed to `/Applications/Orbit.app` (previous versions removed before each final install)
-
-All changes were developed with repeated `npm run check` validation (31 JS tests + 69 Rust tests + clippy + production Vite build) and respect the 9.7/10 quality bar.
-
-### New / Enhanced Keyboard Shortcuts
-
-| Key            | Action                    |
-|----------------|---------------------------|
-| `Cmd+Shift+R`  | Toggle Reader Mode        |
-| `Cmd+=` / `-`  | Zoom in / out (now persists per origin) |
-| `Cmd+Opt+Shift+←/→` | Move active tab left / right |
-| Copy button    | Copies clean link (tracking stripped) |
-
----
-
-## What this app is
-
-Orbit is a native Tauri 2.x + Rust macOS browser that uses WKWebView-backed child webviews for each tab. It provides lightweight browser chrome (tabs, address bar, history, bookmarks, startup state), local persistence with rusqlite, and a privacy-forward "local-first" behavior with no built-in telemetry.
-
-## Latest Major Update (2026-05-30)
-
-See the dedicated section above ("Major Update – May 2026") for the full list of completed work, including the comprehensive UI/UX overhaul and five new features.
-
-Previous session fixes (2026-05-28) remain relevant:
-- Fixed session restore startup behavior so restored tabs no longer trigger an extra navigation on launch.
-- Reworked startup restore flow to call tab switching from Rust state instead of reloading the same URL through the address path.
-
-## About
-
-Orbit is a native macOS browser built for people who want the web without the overhead. No Chrome bloat, no Electron memory tax, no analytics pinging home.
-
-| Layer | Stack |
-|-------|-------|
-| Shell | Tauri 2.10 |
-| Engine | WKWebView (native child webviews) |
-| Backend | Rust 2021 |
-| Frontend | Vanilla JS + Vite |
-| Storage | SQLite via rusqlite |
-
----
+![macOS](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)
+![Tauri 2](https://img.shields.io/badge/Tauri-2.x-blue?logo=tauri)
+![Rust](https://img.shields.io/badge/Rust-stable-orange?logo=rust)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
 
-- **Native tabs** — each tab gets its own WKWebView, managed by Rust. No multi-process overhead.
-- **Local-first data** — bookmarks, history, settings stay in a bundled SQLite DB. Your data, your machine.
-- **Domain blocking** — built-in blocklist at `resources/adblock-patterns.json`
-- **Keyboard-first** — full shortcut set for tabs, navigation, find-in-page
-- **Dark by default** — amber-accented dark theme, with light mode as secondary option
-- **Locked-down CSP** — script-src is tight in Tauri config
+- **Native rendering** — each tab runs in a native WKWebView child webview.
+- **Local-first storage** — bookmarks, history, settings, session state, shortcuts, and zoom memory live in SQLite on this Mac.
+- **macOS-native chrome** — restrained titlebar, tabs, address bar, focus rings, hover/active/disabled states, and light/dark themes.
+- **Keyboard-first navigation** — tab creation, close, switch, address focus, reload, stop, back/forward, find, zoom, and reader mode shortcuts.
+- **Reader Mode** — `Cmd+Shift+R` injects a local reading layout for supported pages.
+- **Clean link copying** — the address copy button strips common tracking parameters such as `utm_*`, `fbclid`, and `gclid`.
+- **Per-origin zoom memory** — zoom levels can persist per site.
+- **Local domain blocking** — bundled domain and URL-pattern blocklist in `resources/adblock-patterns.json`.
 
----
+## Requirements
 
-## Install
-
-### Download
-
-- GitHub release: https://github.com/nodaysidle/orbit-browser/releases/tag/v1.0.5
-- Direct DMG: https://github.com/nodaysidle/orbit-browser/releases/download/v1.0.5/Orbit-1.0.5-aarch64.dmg
-
-The release build is ad-hoc signed and locally verified for local/internal use. It is not Apple-notarized yet, so external distribution still needs Developer ID signing plus notarization.
-
-
-### Requirements
-
-- macOS 14+
+- macOS 10.15+ (`minimumSystemVersion` in the Tauri bundle config)
 - Node.js 20+
-- Rust stable toolchain (`rustup`)
-- `cargo` available on `PATH` (for rustup installs that is usually `export PATH="$HOME/.cargo/bin:$PATH"`)
+- Rust stable toolchain with Cargo on `PATH`
 
-### From source
+## Install from source
 
 ```bash
 git clone https://github.com/nodaysidle/orbit-browser.git
 cd orbit-browser
 npm ci
-npm run tauri build
+npm run tauri -- build --bundles app
 ```
 
-The `.app` lands at `src-tauri/target/release/bundle/macos/Orbit.app`.
+The built app is produced at:
 
-### Quick install
+```txt
+src-tauri/target/release/bundle/macos/Orbit.app
+```
+
+Install it locally:
 
 ```bash
-npm run tauri build && \
 ditto src-tauri/target/release/bundle/macos/Orbit.app /Applications/Orbit.app
+open -n /Applications/Orbit.app
 ```
-
-Or use the helper:
-
-```bash
-bash scripts/build-mac.sh   # builds the app
-bash scripts/install-app.sh # copies to /Applications
-```
-
----
 
 ## Development
 
+Full Tauri app with native webviews:
+
 ```bash
 npm ci
-npm run tauri dev
+npm run tauri -- dev
 ```
 
-Frontend-only hot-reload:
+Frontend-only Vite preview:
 
 ```bash
 npm run dev
 ```
 
-Opens at `http://localhost:1420` — API calls won't work outside Tauri.
+Frontend-only mode opens at `http://localhost:1420`. Browser IPC commands require the Tauri runtime.
 
----
-
-## Quality
+## Testing
 
 ```bash
+npm test
+npm run build
+npm run check:rust
 npm run check
 ```
 
-Runs:
+`npm run check` runs:
 
-1. JS unit tests (`node --test`)
+1. JavaScript unit tests via `node --test`
 2. Production Vite build
-3. Rust format check, clippy, and tests
+3. Rust format check
+4. Rust tests
+5. Rust clippy with warnings denied
 
----
+## macOS packaging
 
-## Shortcuts
+Build a `.app` bundle:
 
-| Key | Action |
-|-----|--------|
+```bash
+npm run tauri -- build --bundles app
+```
+
+Install the built app:
+
+```bash
+ditto src-tauri/target/release/bundle/macos/Orbit.app /Applications/Orbit.app
+```
+
+Verify the installed app:
+
+```bash
+test -d /Applications/Orbit.app
+codesign --verify --deep --strict --verbose=2 /Applications/Orbit.app
+open -n /Applications/Orbit.app
+```
+
+The current local bundle configuration uses ad-hoc signing (`signingIdentity = "-"`). Notarization is not performed by the local build command.
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
 | `Cmd+T` | New tab |
 | `Cmd+W` | Close tab |
 | `Cmd+L` | Focus address bar |
 | `Cmd+R` | Reload |
-| `Cmd+.` | Stop |
+| `Cmd+.` | Stop loading |
 | `Cmd+[` / `Cmd+]` | Back / Forward |
 | `Cmd+Shift+[` / `Cmd+Shift+]` | Previous / Next tab |
 | `Cmd+1` … `Cmd+9` | Switch to tab by index |
 | `Cmd+F` | Find in page |
+| `Cmd+G` | Next find result |
+| `Cmd+=` / `Cmd+-` / `Cmd+0` | Zoom in / out / reset |
 | `Cmd+Shift+R` | Toggle Reader Mode |
 
----
+## Architecture
 
-## Project
+| Layer | Stack |
+|---|---|
+| App shell | Tauri 2 |
+| Browser engine | WKWebView child webviews |
+| Backend | Rust 2021 |
+| Frontend | Vanilla JavaScript + Vite |
+| Storage | SQLite via `rusqlite` |
 
-```
+```txt
 orbit-browser/
-├── index.html              # Browser chrome layout
+├── index.html
 ├── src/
 │   ├── main.js             # State, commands, tab manager
 │   ├── events.js           # DOM event bindings
 │   ├── styles.css          # CSS entrypoint
-│   ├── styles/
-│   │   ├── base.css        # Variables, reset, global
-│   │   ├── chrome.css      # Titlebar, tabs, nav bar
-│   │   ├── home.css        # New-tab page
-│   │   └── panels.css      # Dropdowns, history, bookmarks
-│   └── utils/
-│       ├── ui.js           # Theme, URL helpers
-│       ├── render.js       # DOM rendering
-│       └── dom.js          # Element/icon factory
+│   ├── styles/             # Base, chrome, home, panels
+│   └── utils/              # DOM, render, URL/theme helpers
 ├── src-tauri/
-│   ├── src/
-│   │   ├── main.rs         # App setup, commands
-│   │   ├── browser.rs      # Tab state, navigation
-│   │   ├── tabs.rs         # Webview lifecycle
-│   │   ├── db.rs           # SQLite persistence
-│   │   ├── adblock.rs      # Domain blocking
-│   │   ├── download.rs     # File downloads
-│   │   └── layout.rs       # Webview positioning
-│   └── tauri.conf.json
-└── resources/
-    └── adblock-patterns.json
+│   ├── src/main.rs         # App setup and command registration
+│   ├── src/browser.rs      # Tab state and URL/history logic
+│   ├── src/tabs.rs         # WKWebView lifecycle and navigation
+│   ├── src/db.rs           # SQLite persistence
+│   ├── src/adblock.rs      # Local blocking
+│   ├── src/download.rs     # Download detection/storage
+│   └── src/layout.rs       # Webview bounds/chrome contract
+└── resources/adblock-patterns.json
 ```
 
----
+## Data and privacy
 
-## Data & Privacy
+- Application data: `~/Library/Application Support/com.orbit.browser/orbit.db`
+- No built-in analytics or telemetry.
+- Search queries use the selected search engine only when address input is not a URL.
+- The domain blocklist is bundled locally; Orbit does not fetch a remote list at runtime.
 
-- **Database:** `~/Library/Application Support/com.orbit.browser/orbit.db`
-- **No telemetry.** No analytics. No background pings.
-- **Search:** unrecognized input sends queries to DuckDuckGo. No logging.
-- **Blocklist:** local file, no remote fetch.
+## License
 
----
-
-## Brand
-
-App icon and assets under `src-tauri/icons/`. Source logo at `build/icons/orbit-logo.svg`.
-
-Built by **[NODAYSIDLE](https://github.com/nodaysidle)** — 9.7/10 bar, every time.
-
----
-
-*License: MIT*
+MIT

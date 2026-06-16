@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#141017" media="(prefers-color-scheme: dark)" />
-  <meta name="theme-color" content="#f4eee2" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
   <title>Orbit</title>
   <link rel="stylesheet" href="src/styles.css" />
 </head>
@@ -24,7 +24,7 @@
     </header>
 
     <section class="tab-bar" aria-label="Tabs">
-      <div class="tabs-scroll" id="tabsContainer" role="tablist" aria-label="Open tabs"></div>
+      <div class="tabs-scroll" id="tabsContainer"></div>
       <button class="new-tab-btn" id="btnNewTab" aria-label="New tab" type="button">
         <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
@@ -62,7 +62,7 @@
         </button>
       </div>
 
-      <div class="address-wrap" id="addressWrap" data-scheme="search" data-url-preview="">
+      <div class="address-wrap" id="addressWrap">
         <div class="address-status" id="lockIcon" aria-hidden="true">
           <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
             <rect x="5" y="9" width="10" height="7" rx="2" stroke="currentColor" stroke-width="1.6"/>
@@ -98,7 +98,7 @@
 
     <div class="chrome-progress" id="chromeProgress" aria-hidden="true"></div>
 
-    <main class="new-tab-page" id="newTabPage" role="tabpanel" aria-label="Browser page">
+    <main class="new-tab-page" id="newTabPage">
       <div class="home-shell" id="homeContent">
         <div class="home-orbit" aria-hidden="true">
           <span class="ring ring-one"></span>
@@ -118,16 +118,16 @@
         <div class="shortcuts-row" id="shortcutsRow" aria-label="Shortcuts"></div>
         <section class="recent-section" aria-label="Recent pages">
           <div class="recent-header">
-            <span>Recent</span>
+            <span>Recently visited</span>
           </div>
           <div class="recent-grid" id="recentPages">
             <div class="recent-empty recent-empty-with-suggestions">
-              <span>Start with a clean orbit.</span>
+              <span>Start with a useful destination.</span>
             </div>
-            <div class="recent-suggestions">
-              <button class="recent-suggestion-pill" type="button" data-recent-url="https://github.com/nodaysidle">NODAYSIDLE</button>
-              <button class="recent-suggestion-pill" type="button" data-recent-url="https://tauri.app">Tauri Docs</button>
-              <button class="recent-suggestion-pill" type="button" data-recent-url="https://developer.mozilla.org">MDN Web Docs</button>
+            <div class="recent-suggestions" aria-label="Suggested pages">
+              <button class="recent-suggestion-pill" type="button" data-recent-url="https://github.com" aria-label="Open GitHub"><span>GitHub</span></button>
+              <button class="recent-suggestion-pill" type="button" data-recent-url="https://youtube.com" aria-label="Open YouTube"><span>YouTube</span></button>
+              <button class="recent-suggestion-pill" type="button" data-recent-url="https://wikipedia.org" aria-label="Open Wikipedia"><span>Wikipedia</span></button>
             </div>
           </div>
         </section>
@@ -151,7 +151,7 @@
       <button class="dropdown-item danger" id="menuClearHistory" role="menuitem" tabindex="-1" type="button">Clear History</button>
     </div>
 
-    <section class="dropdown panel hidden" id="historyPanel" role="dialog" aria-modal="false" aria-label="History" tabindex="-1">
+    <section class="dropdown panel hidden" id="historyPanel" aria-label="History">
       <div class="panel-header">
         <span>History</span>
         <button class="panel-close" id="closeHistory" aria-label="Close history" type="button"></button>
@@ -160,7 +160,7 @@
       <div class="panel-list" id="historyList"></div>
     </section>
 
-    <section class="dropdown panel hidden" id="bookmarksPanel" role="dialog" aria-modal="false" aria-label="Bookmarks" tabindex="-1">
+    <section class="dropdown panel hidden" id="bookmarksPanel" aria-label="Bookmarks">
       <div class="panel-header">
         <span>Bookmarks</span>
         <button class="panel-close" id="closeBookmarks" aria-label="Close bookmarks" type="button"></button>
@@ -193,7 +193,7 @@
         <div class="settings-header">
           <div>
             <h2 id="settingsTitle">Settings</h2>
-            <p>Browser preferences stay local on this Mac.</p>
+            <p>Local browser preferences for this Mac.</p>
           </div>
           <button class="panel-close" id="settingsClose" aria-label="Close settings" type="button"></button>
         </div>
@@ -226,22 +226,6 @@
           <div class="settings-section-title">Shortcuts</div>
           <div class="shortcut-editor" id="shortcutEditor"></div>
           <button class="primary-action" id="saveShortcuts" type="button">Save Shortcuts</button>
-        </div>
-      </section>
-    </div>
-
-    <div class="modal-backdrop hidden" id="downloadModal" role="dialog" aria-modal="true" aria-labelledby="downloadTitle" aria-describedby="downloadMessage">
-      <section class="settings-panel modal-panel-compact">
-        <div class="settings-header">
-          <div>
-            <h2 id="downloadTitle">Download file</h2>
-            <p id="downloadMessage">Choose whether to save this file to Downloads.</p>
-          </div>
-          <button class="panel-close" id="downloadCancelIcon" aria-label="Cancel download" type="button"></button>
-        </div>
-        <div class="error-actions modal-actions">
-          <button class="secondary-action" id="downloadCancel" type="button">Cancel</button>
-          <button class="primary-action" id="downloadConfirm" type="button">Download</button>
         </div>
       </section>
     </div>
