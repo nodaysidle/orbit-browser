@@ -1,5 +1,7 @@
 # Orbit
 
+<div align="center">
+
 **A native macOS browser — WKWebView tabs, local-first data, keyboard-first chrome.**
 
 Orbit is a lightweight browser built with Tauri 2 and native WKWebView child webviews. It keeps the browser shell small, stores user data locally, and avoids Electron, telemetry, and account lock-in.
@@ -8,6 +10,30 @@ Orbit is a lightweight browser built with Tauri 2 and native WKWebView child web
 ![Tauri 2](https://img.shields.io/badge/Tauri-2.x-blue?logo=tauri)
 ![Rust](https://img.shields.io/badge/Rust-stable-orange?logo=rust)
 ![License](https://img.shields.io/badge/license-MIT-green)
+
+</div>
+
+---
+
+## Native macOS redesign
+
+Orbit's current redesign keeps the app deliberately native: browser content renders in WKWebView child webviews, while the chrome stays compact, keyboard-first, and tuned for macOS. The release branch focuses on a polished local desktop browser instead of a cross-platform Electron clone.
+
+| Area | What changed |
+|---|---|
+| Browser chrome | Sharper tabs, address bar states, panel surfaces, focus rings, and light/dark theme parity |
+| Native runtime | Tauri 2 shell with WKWebView child webviews and local SQLite persistence |
+| Daily browsing | Reader Mode, clean link copying, per-origin zoom memory, find-in-page, and local domain blocking |
+| Release posture | CI checks, RustSec audit, ad-hoc local macOS packaging, and DMG build path documented |
+
+| Principle | Decision |
+|---|---|
+| Rendering | Native WKWebView, not Electron |
+| Data | Local SQLite, no account lock-in |
+| Frontend | Vanilla JavaScript + Vite |
+| Distribution | macOS app/DMG from Tauri |
+
+---
 
 ## Features
 
@@ -88,6 +114,18 @@ Build a `.app` bundle:
 
 ```bash
 npm run tauri -- build --bundles app
+```
+
+Build a local `.dmg` installer image:
+
+```bash
+npm run tauri -- build --bundles dmg
+```
+
+The local DMG is emitted under:
+
+```txt
+src-tauri/target/release/bundle/dmg/
 ```
 
 Install the built app:

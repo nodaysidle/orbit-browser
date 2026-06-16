@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-16 — Native macOS redesign PR
+
+- Refreshed Orbit's public GitHub README for the native macOS redesign branch, with clearer positioning around WKWebView child webviews, local-first SQLite data, vanilla JavaScript, and Tauri DMG packaging.
+- Documented the local DMG build path used by the release-polish gate: `src-tauri/target/release/bundle/dmg/`.
+- Preserved the existing release boundary: this branch prepares PR documentation and local packaging proof only; publishing a GitHub Release remains a separate approval gate.
+
 ## 2026-05-30 — Major UI/UX Overhaul & Feature Additions
 
 **This was a large, design-driven release.** A full independent code audit was performed, resulting in a detailed design document that was reviewed and fully approved. The entire approved plan was then executed, followed by five additional high-value features.
