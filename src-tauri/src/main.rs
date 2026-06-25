@@ -8,16 +8,19 @@ mod layout;
 mod tabs;
 
 use adblock::AdBlocker;
-use browser::{lock_state, report_error, BrowserState, TabData, TabInfo};
+use browser::{lock_state, ordered_tab_infos, report_error, BrowserState, TabData, TabInfo};
 use db::Db;
 use download::download_file;
-use layout::{resize_active_webview, resize_active_webview_to, MAX_OVERLAY_HEIGHT};
+use layout::{
+    resize_active_webview, resize_active_webview_to, set_active_webview_obscured,
+    MAX_OVERLAY_HEIGHT,
+};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tabs::{
     close_tab, create_tab, find_in_page, get_active_tab, get_tabs, go_back, go_forward,
-    go_home_tab, navigate_tab, reload_tab, reorder_tabs, reset_zoom, set_reader_mode, set_tab_zoom,
-    stop_tab, switch_tab,
+    go_home_tab, navigate_tab, reload_tab, reorder_tabs, reset_zoom, set_tab_zoom, stop_tab,
+    switch_tab,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{Emitter, Manager};
@@ -90,6 +93,64 @@ fn clear_history(db: tauri::State<'_, Db>) -> Result<(), String> {
     db.clear_history().map_err(|e| e.to_string())
 }
 
+fn current_ordered_tabs(state: &BrowserState) -> Result<Vec<TabInfo>, String> {
+    let tabs = lock_state(&state.tabs, "tabs")?;
+    let order = lock_state(&state.tab_order, "tab_order")?;
+    Ok(ordered_tab_infos(&tabs, &order))
+}
+
+fn current_active_id(state: &BrowserState) -> Result<Option<String>, String> {
+    lock_state(&state.active_tab, "active_tab").map(|active| active.clone())
+}
+
+#[tauri::command]
+fn get_projects(db: tauri::State<'_, Db>) -> Result<Vec<db::Project>, String> {
+    db.get_projects().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn open_project(db: tauri::State<'_, Db>, project_id: String) -> Result<db::Project, String> {
+    db.open_project(&project_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create_project(
+    db: tauri::State<'_, Db>,
+    state: tauri::State<'_, BrowserState>,
+    name: String,
+) -> Result<db::Project, String> {
+    let tabs = current_ordered_tabs(state.inner())?;
+    let active = current_active_id(state.inner())?;
+    db.create_project_from_tabs(&name, &tabs, active.as_deref(), "manual")
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_project_from_current_tabs(
+    db: tauri::State<'_, Db>,
+    state: tauri::State<'_, BrowserState>,
+    project_id: String,
+) -> Result<db::Project, String> {
+    let tabs = current_ordered_tabs(state.inner())?;
+    let active = current_active_id(state.inner())?;
+    db.update_project_from_tabs(&project_id, &tabs, active.as_deref())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn detect_project_suggestion(
+    db: tauri::State<'_, Db>,
+    state: tauri::State<'_, BrowserState>,
+) -> Result<Option<db::ProjectSuggestion>, String> {
+    let tabs = current_ordered_tabs(state.inner())?;
+    Ok(db.detect_project_suggestion(&tabs))
+}
+
+#[tauri::command]
+fn delete_project(db: tauri::State<'_, Db>, project_id: String) -> Result<(), String> {
+    db.delete_project(&project_id).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn get_setting(db: tauri::State<'_, Db>, key: String) -> Result<Option<String>, String> {
     db.get_setting(&key).map_err(|e| e.to_string())
@@ -121,6 +182,11 @@ fn set_overlay_height(
     *lock_state(&state.overlay_height, "overlay_height")? = height;
     resize_active_webview(&app);
     Ok(())
+}
+
+#[tauri::command]
+fn set_webview_obscured(app: tauri::AppHandle, obscured: bool) -> Result<(), String> {
+    set_active_webview_obscured(&app, obscured)
 }
 
 fn install_browser_menu(app: &tauri::AppHandle) -> Result<(), String> {
@@ -220,12 +286,17 @@ fn install_browser_menu(app: &tauri::AppHandle) -> Result<(), String> {
         MENU_SHOW_BOOKMARKS,
         "Show Bookmarks",
         true,
-        None::<&str>,
+        Some("CmdOrCtrl+Alt+B"),
     )
     .map_err(|e| e.to_string())?;
-    let show_history =
-        MenuItem::with_id(app, MENU_SHOW_HISTORY, "Show History", true, None::<&str>)
-            .map_err(|e| e.to_string())?;
+    let show_history = MenuItem::with_id(
+        app,
+        MENU_SHOW_HISTORY,
+        "Show History",
+        true,
+        Some("CmdOrCtrl+Y"),
+    )
+    .map_err(|e| e.to_string())?;
     let view_menu = Submenu::with_items(
         app,
         "View",
@@ -482,7 +553,6 @@ fn main() {
             find_in_page,
             set_tab_zoom,
             reset_zoom,
-            set_reader_mode,
             add_bookmark,
             get_bookmarks,
             delete_bookmark,
@@ -490,10 +560,17 @@ fn main() {
             get_history,
             search_history,
             clear_history,
+            get_projects,
+            open_project,
+            create_project,
+            update_project_from_current_tabs,
+            detect_project_suggestion,
+            delete_project,
             get_setting,
             set_setting,
             sync_browser_view,
             set_overlay_height,
+            set_webview_obscured,
             download_file,
         ])
         .run(tauri::generate_context!());

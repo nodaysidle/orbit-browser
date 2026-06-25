@@ -4,7 +4,9 @@ import assert from 'node:assert/strict'
 import { installDom } from './dom-shim.js'
 import {
   renderBookmarksList,
+  renderContinueTabs,
   renderHistoryList,
+  renderProjectCards,
   renderRecentPages,
   renderShortcutEditor,
   renderShortcutGrid,
@@ -68,6 +70,7 @@ test('shortcut grid and editor render persisted shortcuts', () => {
   assert.equal(firstBtn.querySelector('.shortcut-letter').textContent, 'D')
   assert.equal(editor.querySelector('[data-shortcut-title]').value, 'Docs')
   assert.equal(editor.querySelector('[data-shortcut-url-input]').value, 'https://docs.rs')
+  assert.equal(editor.querySelector('[data-remove-shortcut-row]') !== null, true)
 })
 
 test('recent pages render openable cards', () => {
@@ -79,4 +82,40 @@ test('recent pages render openable cards', () => {
   assert.equal(container.children.length, 1)
   assert.equal(container.children[0].dataset.recentUrl, 'https://www.rust-lang.org/learn')
   assert.equal(container.children[0].querySelector('.recent-card-url').textContent, 'rust-lang.org')
+})
+
+test('project cards render resumable work', () => {
+  const document = installDom()
+  const container = document.createElement('div')
+
+  renderProjectCards(container, [{
+    id: 'p1',
+    name: 'Orbit Browser',
+    domains: ['github.com', 'localhost'],
+    tabs: [{ url: 'https://github.com/nodaysidle/orbit-browser' }],
+  }], 'p1')
+
+  assert.equal(container.children.length, 1)
+  const card = container.children[0].querySelector('[data-project-id]')
+  assert.equal(card.dataset.projectId, 'p1')
+  assert.equal(card.classList.contains('active'), true)
+  assert.equal(card.querySelector('.continue-title').textContent, 'Orbit Browser')
+  assert.equal(card.querySelector('.continue-url').textContent, 'github.com / localhost')
+  assert.equal(card.querySelector('.continue-badge').textContent, 'Active')
+  assert.equal(container.children[0].querySelector('[data-project-archive-id]').dataset.projectArchiveId, 'p1')
+})
+
+test('continue tabs render active local session cards', () => {
+  const document = installDom()
+  const container = document.createElement('div')
+
+  renderContinueTabs(container, [
+    { id: 'a', title: 'GitHub', url: 'https://github.com/nodaysidle' },
+    { id: 'b', title: 'New Tab', url: '' },
+  ], 'a')
+
+  assert.equal(container.children.length, 1)
+  assert.equal(container.children[0].dataset.continueTabId, 'a')
+  assert.equal(container.children[0].classList.contains('active'), true)
+  assert.equal(container.children[0].querySelector('.continue-url').textContent, 'github.com')
 })

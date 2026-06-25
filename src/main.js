@@ -6,12 +6,15 @@ import { getVersion } from '@tauri-apps/api/app'
 import { bindEvents } from './events.js'
 import { createFindController } from './find.js'
 import { createShortcutHandlers, getShortcutIntent as resolveShortcutIntent, runShortcutIntent as dispatchShortcutIntent } from './shortcuts.js'
+import { createZoomController } from './zoom.js'
 import { icon } from './utils/dom.js'
 import { closeModal, openModal } from './utils/modal.js'
 import { installUnhandledRejectionHandler, logError, showConfirmToast, showToast } from './utils/toast.js'
 import {
   renderBookmarksList,
+  renderContinueTabs,
   renderHistoryList,
+  renderProjectCards,
   renderRecentPages,
   renderShortcutEditor,
   renderShortcutGrid,
@@ -20,6 +23,7 @@ import {
 import {
   formatError,
   getNavigationTitle,
+  getUrlHost,
   nextTheme,
   normalizeNavigationInput,
   normalizeSearchEngine,
@@ -35,45 +39,49 @@ const state = {
   loadTimeouts: new Map(),
   tabsRenderFrame: 0,
   resizeFrame: 0,
+  resizeSyncTimer: 0,
+  windowTitle: 'Orbit',
   theme: 'dark',
   resolvedTheme: 'dark',
   searchEngine: 'duckduckgo',
   startupBehavior: 'restore',
   shortcuts: [],
+  projects: [],
+  activeProjectId: null,
+  activeProjectUpdateTimer: 0,
+  projectRestoreInProgress: false,
   errorPages: new Map(),
   systemThemeQuery: null,
   overlayHeight: 0,
+  webviewObscured: false,
   chromeHeightCache: null,
   unlisteners: [],
   zoomMemory: new Map(), // origin -> zoom level (e.g. "https://example.com" -> 1.2)
   tabZoomLevels: new Map(),
-  readerModeTabs: new Map(),
   pendingDownloadUrl: null,
 }
 
 const win = new URLSearchParams(window.location?.search || '').has('orbit-visual-qa')
-  ? { close: async () => {}, minimize: async () => {}, toggleMaximize: async () => {} }
+  ? { close: async () => {}, minimize: async () => {}, setTitle: async () => {}, toggleMaximize: async () => {} }
   : getCurrentWindow()
 const $ = id => document.getElementById(id)
 const MAX_OVERLAY_HEIGHT = 680
 const BROWSER_VIEW_SYNC_INTERVAL_MS = 100
 const STARTUP_BEHAVIORS = new Set(['restore', 'new_tab'])
-const DEFAULT_ZOOM_LEVEL = 1.0
-const MIN_ZOOM_LEVEL = 0.5
-const MAX_ZOOM_LEVEL = 3.0
-const ZOOM_STEP = 0.1
 const VISUAL_QA_PARAM = 'orbit-visual-qa'
 const DEFAULT_SHORTCUTS = [
-  { title: 'NODAYSIDLE', url: 'https://github.com/nodaysidle' },
-  { title: 'Tauri Docs', url: 'https://tauri.app' },
-  { title: 'Rust Docs', url: 'https://doc.rust-lang.org' },
-  { title: 'MDN Web Docs', url: 'https://developer.mozilla.org' },
+  { title: 'GitHub', url: 'https://github.com' },
+  { title: 'MDN', url: 'https://developer.mozilla.org' },
+  { title: 'localhost', url: 'http://localhost:3000' },
+  { title: 'docs.rs', url: 'https://docs.rs' },
+  { title: 'npm', url: 'https://www.npmjs.com' },
+  { title: 'Stack Overflow', url: 'https://stackoverflow.com' },
 ]
 
 const VISUAL_QA_TABS = [
   { id: 'qa-home', title: 'Orbit Home', url: '', loading: false, can_go_back: false, can_go_forward: false, has_webview: false },
   { id: 'qa-docs', title: 'Example Domain', url: 'https://example.com/', loading: false, can_go_back: true, can_go_forward: false, has_webview: true },
-  { id: 'qa-reader', title: 'Reader Preview', url: 'https://www.iana.org/help/example-domains', loading: false, can_go_back: false, can_go_forward: false, has_webview: true },
+  { id: 'qa-docs-alt', title: 'Docs Preview', url: 'https://www.iana.org/help/example-domains', loading: false, can_go_back: false, can_go_forward: false, has_webview: true },
 ]
 
 const visualQaStore = {
@@ -113,7 +121,7 @@ function parseShortcuts(value) {
         url: String(shortcut?.url || '').trim(),
       }))
       .filter(shortcut => shortcut.title && isWebUrl(normalizeNavigationInput(shortcut.url, state.searchEngine)))
-      .slice(0, 4)
+      .slice(0, 6)
     return shortcuts.length ? shortcuts : [...DEFAULT_SHORTCUTS]
   } catch (error) {
     logError('shortcut settings parse failed', error)
@@ -132,7 +140,7 @@ function absorb(promise, fallbackMessage = 'Action failed') {
   if (!promise || typeof promise.catch !== 'function') return promise
   promise.catch(error => {
     if (error) logError('Action failed', error)
-    if (!error?.orbitHandled) showToast(formatError(error, fallbackMessage))
+    showToast(formatError(error, fallbackMessage))
   })
 }
 
@@ -146,7 +154,6 @@ async function command(name, payload = {}, fallbackMessage = 'Action failed') {
     }
     const handled = new Error(formatError(error, fallbackMessage), { cause: error })
     handled.orbitHandled = true
-    showToast(handled.message)
     throw handled
   }
 }
@@ -168,12 +175,19 @@ async function visualQaCommand(name, payload = {}) {
       const url = payload.url || ''
       const tab = { id, title: url ? getNavigationTitle(url) : 'New Tab', url, loading: false, can_go_back: false, can_go_forward: false, has_webview: Boolean(url) }
       visualQaStore.tabs.set(id, tab)
-      visualQaStore.activeId = id
+      if (payload.makeActive !== false) visualQaStore.activeId = id
       return tab
     }
     case 'switch_tab':
       visualQaStore.activeId = payload.tabId
       return null
+    case 'close_tab': {
+      visualQaStore.tabs.delete(payload.tabId)
+      if (visualQaStore.activeId === payload.tabId) {
+        visualQaStore.activeId = [...visualQaStore.tabs.keys()][0] || null
+      }
+      return visualQaStore.activeId
+    }
     case 'reorder_tabs': {
       const ordered = payload.orderedIds || []
       visualQaStore.tabs = new Map(ordered.map(id => [id, visualQaStore.tabs.get(id)]).filter(([, tab]) => tab))
@@ -184,6 +198,28 @@ async function visualQaCommand(name, payload = {}) {
         { title: 'Example Domain', url: 'https://example.com/' },
         { title: 'IANA — Example Domains', url: 'https://www.iana.org/help/example-domains' },
       ]
+    case 'get_projects':
+      return [{
+        id: 'qa-orbit-project',
+        name: 'Orbit Browser',
+        slug: 'orbit-browser',
+        domains: ['github.com', 'localhost', 'tauri.app'],
+        tabs: [
+          { url: 'https://github.com/nodaysidle/orbit-browser', title: 'nodaysidle/orbit-browser', position: 0, is_active: true },
+          { url: 'http://localhost:3000', title: 'localhost:3000', position: 1, is_active: false },
+          { url: 'https://tauri.app', title: 'Tauri', position: 2, is_active: false },
+        ],
+      }]
+    case 'open_project':
+      return (await visualQaCommand('get_projects'))[0]
+    case 'create_project':
+      return { ...(await visualQaCommand('get_projects'))[0], id: `qa-project-${Date.now()}`, name: payload.name || 'Current Work' }
+    case 'update_project_from_current_tabs':
+      return (await visualQaCommand('get_projects'))[0]
+    case 'delete_project':
+      return null
+    case 'detect_project_suggestion':
+      return { name: 'Orbit Browser', slug: 'orbit-browser', reason: 'github_repo_with_builder_context', confidence: 95, domains: ['github.com', 'localhost', 'tauri.app'] }
     case 'get_bookmarks':
     case 'search_history':
       return []
@@ -201,10 +237,13 @@ function isExpectedCommandError(error) {
 const findController = createFindController({ $, state, command, absorb, updateOverlay })
 const { openFindBar, closeFindBar, findNext, findPrev } = findController
 
+const zoomController = createZoomController({ state, command, getSetting, saveSetting, absorb, logError, showToast, isWebUrl })
+const { loadZoomMemory, zoomIn, zoomOut, resetZoom, syncTabEnhancements, clearTabEnhancements } = zoomController
+
 function shortcutHandlers() {
   return createShortcutHandlers({
     $, absorb, command, state, createTab, closeTab, openFindBar, findNext,
-    toggleReaderMode, openBookmarksPanel, openHistoryPanel, openSettingsPanel,
+    openBookmarksPanel, openHistoryPanel, openSettingsPanel,
     cycleTab, moveActiveTab, switchTab, zoomIn, zoomOut, resetZoom, goHome: goHomeTab,
   })
 }
@@ -213,8 +252,42 @@ function setIconButton(button, name, size = 18) { button.replaceChildren(icon(na
 
 function renderTabs() {
   renderTabList({ container: $('tabsContainer'), tabs: [...state.tabs.values()], activeId: state.activeId, tabCount: $('tabCount') })
+  renderStartContinuity()
   updateChromeProgress()
   updateTabOverflowIndicators()
+}
+
+function renderStartContinuity() {
+  const continueContainer = $('continueTabs')
+  if (continueContainer) renderContinueTabs(continueContainer, [...state.tabs.values()], state.activeId)
+  const summary = $('sessionSummary')
+  const webTabs = [...state.tabs.values()].filter(tab => isWebUrl(tab.url))
+  const webTabCount = webTabs.length
+  const activeWebTab = webTabs.find(tab => tab.id === state.activeId) || webTabs[0]
+  const hosts = [...new Set(webTabs.map(tab => getUrlHost(tab.url)).filter(Boolean))]
+  const activeTitle = activeWebTab ? readableWorkTitle(activeWebTab) : 'Start from command'
+  const resumeTarget = activeWebTab ? getUrlHost(activeWebTab.url) || 'Current tab' : 'Recent work'
+  const nextStep = webTabCount > 1
+    ? `${webTabCount} tabs ready`
+    : webTabCount === 1
+      ? 'Continue current tab'
+      : 'Open a work tab'
+  const currentWork = $('workbenchCurrentWork')
+  if (currentWork) currentWork.textContent = activeTitle
+  const resume = $('workbenchResumeTarget')
+  if (resume) resume.textContent = resumeTarget
+  const next = $('workbenchNextStep')
+  if (next) next.textContent = nextStep
+  if (!summary) return
+  summary.textContent = webTabCount
+    ? `Resume ${activeTitle} · ${hosts.slice(0, 2).join(' / ')}`
+    : 'Start, resume, or recover browser work.'
+}
+
+function readableWorkTitle(tab) {
+  const title = String(tab?.title || '').trim()
+  if (title && !/^new tab$/i.test(title)) return title
+  return getUrlHost(tab?.url) || getNavigationTitle(tab?.url || '') || 'Current work'
 }
 
 function updateTabOverflowIndicators() {
@@ -255,10 +328,158 @@ function renderShortcuts() {
   renderShortcutGrid($('shortcutsRow'), state.shortcuts)
 }
 
+export function projectTabsForResume(project) {
+  return Array.isArray(project?.tabs)
+    ? [...project.tabs].sort((a, b) => (a.position || 0) - (b.position || 0))
+    : []
+}
+
+function renderProjects() {
+  renderProjectCards($('projectCards'), state.projects, state.activeProjectId)
+}
+
+async function loadProjects() {
+  try {
+    state.projects = await command('get_projects', {}, 'Could not load projects')
+    if (state.activeProjectId && !state.projects.some(project => project.id === state.activeProjectId)) {
+      state.activeProjectId = null
+      await rememberActiveProjectId(null)
+    }
+    renderProjects()
+  } catch (error) {
+    state.projects = []
+    renderProjects()
+    showToast('Could not load projects', 'error')
+  }
+}
+
+async function rememberActiveProjectId(projectId) {
+  state.activeProjectId = projectId || null
+  await saveSetting('active_project_id', state.activeProjectId || '', 'Could not remember active project')
+}
+
+async function restoreActiveProjectMemory() {
+  const projectId = await getSetting('active_project_id')
+  state.activeProjectId = projectId || null
+}
+
+function queueActiveProjectUpdate(reason = 'work changed') {
+  if (!state.activeProjectId || state.projectRestoreInProgress || isVisualQaMode()) return
+  clearTimeout(state.activeProjectUpdateTimer)
+  state.activeProjectUpdateTimer = window.setTimeout(() => {
+    absorb(
+      command('update_project_from_current_tabs', { projectId: state.activeProjectId }, 'Could not update project')
+        .then(project => {
+          if (project?.id) state.activeProjectId = project.id
+          return loadProjects()
+        })
+        .catch(error => logError(`active project auto-update failed after ${reason}`, error))
+    )
+  }, 900)
+}
+
+async function replaceTabsWithProjectTabs(tabs = []) {
+  state.projectRestoreInProgress = true
+  try {
+    const existingIds = [...state.tabs.keys()]
+    for (const tabId of existingIds) {
+      clearLoadTimeout(tabId)
+      await command('close_tab', { tabId }, 'Could not close the current workbench tab')
+    }
+    state.tabs.clear()
+    state.errorPages.clear()
+    state.tabZoomLevels.clear()
+    state.activeId = null
+    renderTabs()
+    for (const tab of tabs) {
+      await createTab(tab.url, Boolean(tab.is_active))
+    }
+    const activeProjectTab = tabs.find(tab => tab.is_active)
+    if (!activeProjectTab && tabs.length) {
+      const lastTabId = [...state.tabs.keys()].at(-1)
+      if (lastTabId) await switchTab(lastTabId)
+    }
+  } finally {
+    state.projectRestoreInProgress = false
+  }
+}
+
+function suggestedProjectName() {
+  const active = activeTab()
+  const title = active?.title && active.title !== 'New Tab' ? active.title : ''
+  return title || $('workbenchCurrentWork')?.textContent || 'Current Work'
+}
+
+async function saveCurrentWorkProject() {
+  const suggestion = await command('detect_project_suggestion', {}, 'Could not detect project').catch(() => null)
+  const defaultName = suggestion?.name || suggestedProjectName()
+  const name = await showPromptModal('Save Project', 'Enter a name for this project.', defaultName)
+  if (!name?.trim()) return
+  const project = await command('create_project', { name: name.trim() }, 'Could not save project')
+  await rememberActiveProjectId(project.id)
+  await loadProjects()
+  showToast(`Saved ${project.name}`, 'success')
+}
+
+async function updateActiveProject() {
+  if (!state.activeProjectId) {
+    await saveCurrentWorkProject()
+    return
+  }
+  const project = await command('update_project_from_current_tabs', { projectId: state.activeProjectId }, 'Could not update project')
+  await rememberActiveProjectId(project.id)
+  await loadProjects()
+  showToast(`Updated ${project.name}`, 'success')
+}
+
+async function archiveProject(projectId) {
+  const project = state.projects.find(item => item.id === projectId)
+  if (!projectId || !project) return
+  const confirmed = await showConfirmDialog(`Archive ${project.name}?`, 'Archive', 'Cancel')
+  if (!confirmed) return
+  await command('delete_project', { projectId }, 'Could not archive project')
+  if (state.activeProjectId === projectId) await rememberActiveProjectId(null)
+  await loadProjects()
+  showToast(`Archived ${project.name}`, 'info')
+}
+
+async function openProject(projectId) {
+  if (!projectId) return
+  const project = await command('open_project', { projectId }, 'Could not open project')
+  const tabs = projectTabsForResume(project)
+  if (!tabs.length) return
+  closeAllPanels()
+  await saveSetting('project_restore_started_at', `${Math.floor(Date.now() / 1000)}`, 'Could not guard project restore')
+  try {
+    await replaceTabsWithProjectTabs(tabs)
+    await rememberActiveProjectId(project.id)
+    await command('update_project_from_current_tabs', { projectId: project.id }, 'Could not finalize project restore')
+  } finally {
+    await saveSetting('project_restore_started_at', '', 'Could not clear project restore guard')
+  }
+  await loadProjects()
+}
+
+async function refreshProjectSuggestion() {
+  try {
+    const suggestion = await command('detect_project_suggestion', {}, 'Could not detect project')
+    if (suggestion?.name) {
+      const currentWork = $('workbenchCurrentWork')
+      if (currentWork && currentWork.textContent === 'Start from command') {
+        const active = activeTab()
+        if (!active?.url || !isWebUrl(active.url)) currentWork.textContent = suggestion.name
+      }
+    }
+  } catch (error) {
+    logError('detect_project_suggestion failed', error)
+  }
+}
+
 function updateChromeProgress() {
   const progress = $('chromeProgress')
   if (!progress) return
-  progress.classList.toggle('active', [...state.tabs.values()].some(tab => tab.loading))
+  const tab = activeTab()
+  progress.classList.toggle('active', Boolean(tab?.loading))
 }
 
 function getSystemTheme() {
@@ -312,17 +533,11 @@ function chromeHeight() {
   if (state.chromeHeightCache !== null) return state.chromeHeightCache
   const value = getComputedStyle(document.documentElement).getPropertyValue('--chrome-height').trim()
   const parsed = Number.parseFloat(value)
-  state.chromeHeightCache = Number.isFinite(parsed) ? parsed : 124
+  state.chromeHeightCache = Number.isFinite(parsed) ? parsed : 100
   return state.chromeHeightCache
 }
 
 function activeOverlayElement() {
-  const settingsModal = $('settingsModal')
-  if (settingsModal && !settingsModal.classList.contains('hidden')) return settingsModal
-  const downloadModal = $('downloadModal')
-  if (downloadModal && !downloadModal.classList.contains('hidden')) return downloadModal
-  const aboutModal = $('aboutModal')
-  if (aboutModal && !aboutModal.classList.contains('hidden')) return aboutModal
   const history = $('historyPanel')
   if (history && !history.classList.contains('hidden')) return history
   const bookmarks = $('bookmarksPanel')
@@ -332,6 +547,25 @@ function activeOverlayElement() {
   const findBar = $('findBar')
   if (findBar && !findBar.classList.contains('hidden')) return findBar
   return null
+}
+
+function isBlockingModalOpen() {
+  return ['settingsModal', 'downloadModal', 'aboutModal'].some(id => {
+    const modal = $(id)
+    return modal && !modal.classList.contains('hidden')
+  })
+}
+
+async function syncModalWebviewOcclusion() {
+  if (isVisualQaMode()) return
+  const next = isBlockingModalOpen()
+  if (next === state.webviewObscured) return
+  state.webviewObscured = next
+  try {
+    await invoke('set_webview_obscured', { obscured: next })
+  } catch (error) {
+    logError('set_webview_obscured failed', error)
+  }
 }
 
 function computeOverlayHeight() {
@@ -346,9 +580,9 @@ function computeOverlayHeight() {
 async function syncOverlayHeight() {
   const next = computeOverlayHeight()
   if (next === state.overlayHeight) return
-  state.overlayHeight = next
   try {
     await invoke('set_overlay_height', { height: next })
+    state.overlayHeight = next
   } catch (error) {
     logError('set_overlay_height failed', error)
   }
@@ -356,16 +590,47 @@ async function syncOverlayHeight() {
 
 function updateOverlay() { return syncOverlayHeight() }
 
+async function resetNativeOverlayHeight() {
+  if (isVisualQaMode()) return
+  try {
+    await invoke('set_overlay_height', { height: 0 })
+    state.overlayHeight = 0
+  } catch (error) {
+    logError('reset overlay height failed', error)
+  }
+}
+
+function updateModalChromeLayer() {
+  absorb(syncModalWebviewOcclusion())
+  return updateOverlay()
+}
+
 let lastBrowserViewSyncTime = 0
 function queueBrowserViewSync() {
-  if (state.resizeFrame) return
+  if (state.resizeFrame || state.resizeSyncTimer) return
   state.resizeFrame = requestAnimationFrame(() => {
     state.resizeFrame = 0
-    const now = Date.now()
-    if (now - lastBrowserViewSyncTime < BROWSER_VIEW_SYNC_INTERVAL_MS) return
+    const now = performance.now()
+    const elapsed = now - lastBrowserViewSyncTime
+    if (elapsed < BROWSER_VIEW_SYNC_INTERVAL_MS) {
+      state.resizeSyncTimer = window.setTimeout(() => {
+        state.resizeSyncTimer = 0
+        queueBrowserViewSync()
+      }, Math.max(0, BROWSER_VIEW_SYNC_INTERVAL_MS - elapsed))
+      return
+    }
     lastBrowserViewSyncTime = now
     absorb(syncBrowserView())
   })
+}
+
+function updateWindowTitle() {
+  const tab = activeTab()
+  const tabTitle = String(tab?.title || '').trim()
+  const nextTitle = tabTitle && tabTitle !== 'New Tab' ? `${tabTitle} — Orbit` : 'Orbit'
+  if (state.windowTitle === nextTitle) return
+  state.windowTitle = nextTitle
+  absorb(win.setTitle(nextTitle))
 }
 
 function clearLoadTimeout(tabId) {
@@ -466,7 +731,7 @@ function updateNav() {
   const wrap = $('addressWrap')
 
   $('addressInput').value = hasPage || error ? (error?.url || url) : ''
-  $('btnHome').disabled = !state.activeId || !hasPage
+  $('btnHome').disabled = !state.activeId
   $('btnBack').disabled = !tab?.can_go_back
   $('btnForward').disabled = !tab?.can_go_forward
   $('btnReload').disabled = !hasPage
@@ -496,6 +761,7 @@ function updateNav() {
   else tabpanel.removeAttribute('aria-labelledby')
   renderErrorState()
   updateChromeProgress()
+  updateWindowTitle()
   absorb(refreshBookmarkIcon())
 }
 
@@ -551,132 +817,19 @@ function deleteShortcutAt(index) {
   absorb(saveSetting('shortcuts', JSON.stringify(state.shortcuts), 'Could not save shortcut deletion'))
 }
 
-function clearTabEnhancements(tabId) {
-  state.tabZoomLevels.delete(tabId)
-  state.readerModeTabs.delete(tabId)
-}
-
-// --- Zoom Memory (Per-origin) ---
-function getOrigin(url) {
-  try {
-    return new URL(url).origin
-  } catch {
-    return null
+function addShortcutRow() {
+  if (state.shortcuts.length >= 6) {
+    showToast('Six shortcuts maximum.', 'info')
+    return
   }
+  state.shortcuts.push({ title: '', url: '' })
+  syncSettingsControls()
 }
 
-async function loadZoomMemory() {
-  try {
-    const raw = await getSetting('zoom_memory')
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      state.zoomMemory = new Map(Object.entries(parsed))
-    }
-  } catch (e) {
-    logError('Failed to load zoom memory', e)
-  }
-}
-
-async function saveZoomMemory() {
-  try {
-    const obj = Object.fromEntries(state.zoomMemory)
-    await saveSetting('zoom_memory', JSON.stringify(obj), 'Could not save zoom memory')
-  } catch (e) {
-    logError('Failed to save zoom memory', e)
-  }
-}
-
-function clampZoomLevel(value) {
-  if (!Number.isFinite(value)) return DEFAULT_ZOOM_LEVEL
-  const rounded = Math.round(value * 10) / 10
-  return Math.min(MAX_ZOOM_LEVEL, Math.max(MIN_ZOOM_LEVEL, rounded))
-}
-
-function savedZoomForUrl(url) {
-  const origin = getOrigin(url)
-  if (!origin) return DEFAULT_ZOOM_LEVEL
-  return clampZoomLevel(state.zoomMemory.get(origin) ?? DEFAULT_ZOOM_LEVEL)
-}
-
-async function persistZoomForUrl(url, zoomLevel) {
-  const origin = getOrigin(url)
-  if (!origin) return
-  state.zoomMemory.set(origin, clampZoomLevel(zoomLevel))
-  await saveZoomMemory()
-}
-
-function currentZoomLevelForTab(tabId = state.activeId) {
-  const tab = state.tabs.get(tabId)
-  if (!tab?.url) return DEFAULT_ZOOM_LEVEL
-  return clampZoomLevel(state.tabZoomLevels.get(tabId) ?? savedZoomForUrl(tab.url))
-}
-
-async function setTabZoomLevel(tabId, zoomLevel) {
-  const tab = state.tabs.get(tabId)
-  if (!tab?.id || !isWebUrl(tab.url)) return DEFAULT_ZOOM_LEVEL
-  const applied = await command(
-    'set_tab_zoom',
-    { tabId, zoomLevel: clampZoomLevel(zoomLevel) },
-    'Could not update zoom'
-  )
-  state.tabZoomLevels.set(tabId, applied)
-  await persistZoomForUrl(tab.url, applied)
-  return applied
-}
-
-function applySavedZoomToTab(tabId) {
-  const tab = state.tabs.get(tabId)
-  if (!tab?.id || !isWebUrl(tab.url)) return Promise.resolve(DEFAULT_ZOOM_LEVEL)
-  return setTabZoomLevel(tabId, savedZoomForUrl(tab.url))
-}
-
-function zoomIn() {
-  return setTabZoomLevel(state.activeId, currentZoomLevelForTab() + ZOOM_STEP)
-}
-
-function zoomOut() {
-  return setTabZoomLevel(state.activeId, currentZoomLevelForTab() - ZOOM_STEP)
-}
-
-function resetZoom() {
-  return setTabZoomLevel(state.activeId, DEFAULT_ZOOM_LEVEL)
-}
-
-function applyReaderModeToTab(tabId) {
-  const tab = state.tabs.get(tabId)
-  if (!tab?.id || !isWebUrl(tab.url)) return Promise.resolve()
-  const enabled = state.readerModeTabs.get(tabId) === true
-  return command(
-    'set_reader_mode',
-    { tabId, enabled },
-    enabled ? 'Could not enable reader mode' : 'Could not disable reader mode'
-  )
-}
-
-function syncTabEnhancements(tabId) {
-  return Promise.all([
-    applySavedZoomToTab(tabId),
-    applyReaderModeToTab(tabId),
-  ])
-}
-
-function toggleReaderMode() {
-  const tab = activeTab()
-  if (!tab?.id || !isWebUrl(tab.url)) return
-  const nextEnabled = state.readerModeTabs.get(tab.id) !== true
-  state.readerModeTabs.set(tab.id, nextEnabled)
-  absorb(
-    command(
-      'set_reader_mode',
-      { tabId: tab.id, enabled: nextEnabled },
-      nextEnabled ? 'Could not enable reader mode' : 'Could not disable reader mode'
-    ).then(() => {
-      showToast(nextEnabled ? 'Reader mode on' : 'Reader mode off', 'info')
-    }).catch(error => {
-      state.readerModeTabs.set(tab.id, !nextEnabled)
-      throw error
-    })
-  )
+function removeShortcutRow(index) {
+  if (index < 0 || index >= state.shortcuts.length) return
+  state.shortcuts.splice(index, 1)
+  syncSettingsControls()
 }
 
 function closeAllPanels() {
@@ -687,16 +840,18 @@ function closeAllPanels() {
   updateOverlay()
 }
 
-async function createTab(url = '') {
+async function createTab(url = '', makeActive = true) {
   await syncBrowserView()
-  const tab = await command('create_tab', { url, makeActive: true }, 'Could not create a new tab')
+  const tab = await command('create_tab', { url, makeActive }, 'Could not create a new tab')
   state.tabs.set(tab.id, tab)
-  state.activeId = tab.id
+  if (makeActive) state.activeId = tab.id
   clearTabError(tab.id)
   renderTabs()
   updateNav()
-  if (!url) $('addressInput').focus()
+  if (!url && makeActive) $('addressInput').focus()
   absorb(loadRecentPages())
+  absorb(loadProjects())
+  queueActiveProjectUpdate('tab created')
 }
 
 async function switchTab(tabId) {
@@ -709,6 +864,7 @@ async function switchTab(tabId) {
   updateNav()
   absorb(syncTabEnhancements(tabId))
   absorb(loadRecentPages())
+  queueActiveProjectUpdate('active tab changed')
 }
 
 async function persistTabOrder(orderedIds = []) {
@@ -717,6 +873,7 @@ async function persistTabOrder(orderedIds = []) {
   state.tabs = new Map(orderedIds.map(id => [id, state.tabs.get(id)]))
   renderTabs()
   await command('reorder_tabs', { orderedIds }, 'Could not save tab order')
+  queueActiveProjectUpdate('tab order changed')
 }
 
 export async function moveTabInMap(tabs, activeId, direction) {
@@ -764,6 +921,7 @@ async function closeTab(tabId) {
   renderTabs()
   updateNav()
   if (state.activeId) absorb(syncTabEnhancements(state.activeId))
+  queueActiveProjectUpdate('tab closed')
 }
 
 async function navigate(rawUrl) {
@@ -849,7 +1007,7 @@ async function handleDownload(url) {
   state.pendingDownloadUrl = url
   $('downloadMessage').textContent = `Save ${filename} to Downloads on this Mac?`
   openModal($('downloadModal'), '#downloadConfirm')
-  updateOverlay()
+  updateModalChromeLayer()
 }
 
 async function confirmDownload() {
@@ -857,7 +1015,7 @@ async function confirmDownload() {
   if (!url) return
   state.pendingDownloadUrl = null
   closeModal($('downloadModal'), $('addressInput'))
-  updateOverlay()
+  updateModalChromeLayer()
   try {
     await invoke('download_file', { url })
   } catch (error) {
@@ -870,7 +1028,7 @@ function cancelDownload() {
   const hadPending = Boolean(state.pendingDownloadUrl)
   state.pendingDownloadUrl = null
   closeModal($('downloadModal'), $('addressInput'))
-  updateOverlay()
+  updateModalChromeLayer()
   if (hadPending) showToast('Download canceled', 'info')
 }
 
@@ -906,6 +1064,7 @@ async function setupListeners() {
     if (payload.id === state.activeId) updateNav()
     absorb(syncTabEnhancements(payload.id))
     absorb(loadRecentPages())
+    queueActiveProjectUpdate('navigation loaded')
   }
   const blocked = ({ payload }) => {
     const tab = payload?.tab
@@ -962,6 +1121,7 @@ async function setupListeners() {
 
 function applyTabProgress(payload) {
   if (!state.tabs.has(payload?.id)) return
+  closeAllPanels()
   state.tabs = applyProgressToMap(state.tabs, payload)
   const tab = state.tabs.get(payload.id)
   clearTabError(payload.id)
@@ -1091,7 +1251,7 @@ async function saveShortcutEdits() {
     const title = row.querySelector('[data-shortcut-title]')?.value.trim() || ''
     const url = row.querySelector('[data-shortcut-url-input]')?.value.trim() || ''
     return { title, url: normalizeNavigationInput(url, state.searchEngine) }
-  }).filter(shortcut => shortcut.title && isWebUrl(shortcut.url)).slice(0, 4)
+  }).filter(shortcut => shortcut.title && isWebUrl(shortcut.url)).slice(0, 6)
   if (!next.length) {
     showToast('Add at least one shortcut title and URL.', 'info')
     return
@@ -1140,12 +1300,12 @@ function openSettingsPanel() {
   closeAllPanels()
   syncSettingsControls()
   openModal($('settingsModal'), '#settingsClose')
-  updateOverlay()
+  updateModalChromeLayer()
 }
 
 function closeSettingsPanel() {
   closeModal($('settingsModal'), $('addressInput'))
-  updateOverlay()
+  updateModalChromeLayer()
 }
 
 async function loadRecentPages() {
@@ -1222,18 +1382,81 @@ function cycleTab(direction) {
 
 function showAboutPanel() {
   openModal($('aboutModal'), '#aboutClose')
-  updateOverlay()
+  updateModalChromeLayer()
 }
 
 function closeAboutPanel() {
   closeModal($('aboutModal'), $('addressInput'))
-  updateOverlay()
+  updateModalChromeLayer()
+}
+
+function showPromptModal(title, message, defaultValue = '') {
+  return new Promise(resolve => {
+    const modal = $('promptModal')
+    const input = $('promptInput')
+    const titleEl = $('promptTitle')
+    const messageEl = $('promptMessage')
+    if (!modal || !input) { resolve(null); return }
+    if (titleEl) titleEl.textContent = title
+    if (messageEl) messageEl.textContent = message
+    input.value = defaultValue
+    input.dataset.promptResolving = ''
+
+    const cleanup = () => {
+      modal.classList.add('hidden')
+      $('promptConfirm')?.removeEventListener('click', onConfirm)
+      $('promptCancel')?.removeEventListener('click', onCancel)
+      $('promptCancelIcon')?.removeEventListener('click', onCancel)
+      modal.removeEventListener('click', onBackdrop)
+      input.removeEventListener('keydown', onKey)
+      updateModalChromeLayer()
+    }
+
+    const resolveOnce = value => {
+      if (input.dataset.promptResolving === 'done') return
+      input.dataset.promptResolving = 'done'
+      cleanup()
+      resolve(value)
+    }
+
+    const onConfirm = () => resolveOnce(input.value.trim())
+    const onCancel = () => resolveOnce(null)
+    const onBackdrop = event => { if (event.target === event.currentTarget) onCancel() }
+    const onKey = event => {
+      if (event.key === 'Enter') { event.preventDefault(); onConfirm() }
+      if (event.key === 'Escape') { event.preventDefault(); onCancel() }
+    }
+
+    modal.classList.remove('hidden')
+    $('promptConfirm')?.addEventListener('click', onConfirm)
+    $('promptCancel')?.addEventListener('click', onCancel)
+    $('promptCancelIcon')?.addEventListener('click', onCancel)
+    modal.addEventListener('click', onBackdrop)
+    input.addEventListener('keydown', onKey)
+    input.focus()
+    input.select()
+    updateModalChromeLayer()
+  })
+}
+
+function showConfirmDialog(message, confirmLabel = 'Confirm', cancelLabel = 'Cancel') {
+  return new Promise(resolve => {
+    showConfirmToast({
+      message,
+      confirmLabel,
+      cancelLabel,
+      focusCancel: true,
+      onConfirm: () => resolve(true),
+      onCancel: () => resolve(false),
+    })
+  })
 }
 
 function cleanupListeners() {
   clearTimeout(state.historySearchTimer)
   if (state.tabsRenderFrame) cancelAnimationFrame(state.tabsRenderFrame)
   if (state.resizeFrame) cancelAnimationFrame(state.resizeFrame)
+  if (state.resizeSyncTimer) clearTimeout(state.resizeSyncTimer)
   for (const timeoutId of state.loadTimeouts.values()) {
     clearTimeout(timeoutId)
   }
@@ -1260,8 +1483,8 @@ async function init() {
   setIconButton($('findNext'), 'down', 14)
   setIconButton($('findClose'), 'close', 14)
   setupSystemThemeListener()
-  await Promise.all([loadPreferences(), loadZoomMemory()])
-  await loadRecentPages()
+  await Promise.all([loadPreferences(), loadZoomMemory(), restoreActiveProjectMemory()])
+  await Promise.all([loadRecentPages(), loadProjects()])
   try {
     $('aboutVersion').textContent = `Version ${await getVersion()}`
   } catch (error) {
@@ -1277,7 +1500,8 @@ async function init() {
     setThemePreference, changeSearchEngine, changeStartupBehavior,
     saveShortcutEdits, handleNewTabSearch, retryErrorPage, errorPageHome,
     copyCurrentAddress, deleteShortcutAt, confirmDownload, cancelDownload,
-    persistTabOrder,
+    persistTabOrder, openProject, saveCurrentWorkProject, updateActiveProject, archiveProject,
+    showAboutPanel, addShortcutRow, removeShortcutRow,
     goHome: () => absorb(goHomeTab()),
     goBack: () => absorb(command('go_back', { tabId: state.activeId }, 'Could not go back')),
     goForward: () => absorb(command('go_forward', { tabId: state.activeId }, 'Could not go forward')),
@@ -1286,6 +1510,7 @@ async function init() {
   })
   await setupListeners()
   await syncBrowserView()
+  await resetNativeOverlayHeight()
   updateOverlay()
   setupTabOverflowIndicators()
 
@@ -1298,6 +1523,8 @@ async function init() {
     existingTabs.forEach(tab => state.tabs.set(tab.id, tab))
     state.activeId = activeId || existingTabs[0].id
     renderTabs()
+    absorb(loadProjects())
+    absorb(refreshProjectSuggestion())
     updateNav()
     const active = activeTab()
     if (active && isWebUrl(active.url)) {
