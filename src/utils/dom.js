@@ -10,6 +10,11 @@ const ICON_PATHS = {
   ],
   close: [['path', { d: 'm6 6 8 8M14 6l-8 8' }]],
   down: [['path', { d: 'm6 8 4 4 4-4' }]],
+  error: [
+    ['path', { d: 'M10 3.5 18 17.5H2L10 3.5Z' }],
+    ['path', { d: 'M10 8.5v4' }],
+    ['circle', { cx: '10', cy: '15', r: '0.6', fill: 'currentColor' }],
+  ],
   forward: [['path', { d: 'm8 6 4 4-4 4' }]],
   lock: [
     ['rect', { x: '5', y: '9', width: '10', height: '7', rx: '2' }],
@@ -21,6 +26,10 @@ const ICON_PATHS = {
     ['circle', { cx: '10', cy: '15', r: '1' }],
   ],
   moon: [['path', { d: 'M15 13.5A6.5 6.5 0 0 1 6.5 5 6.8 6.8 0 1 0 15 13.5Z' }]],
+  orbit: [
+    ['circle', { cx: '10', cy: '10', r: '7', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.4' }],
+    ['circle', { cx: '10', cy: '10', r: '2.5', fill: 'currentColor' }],
+  ],
   plus: [['path', { d: 'M10 4v12M4 10h12' }]],
   reload: [
     ['path', { d: 'M15 6v4h-4' }],

@@ -300,8 +300,8 @@
   opacity: 0;
   transform: translateY(-8px);
   transition:
-    opacity 0.18s ease,
-    transform 0.18s ease;
+    opacity var(--motion-base) var(--ease-standard),
+    transform var(--motion-base) var(--ease-standard);
 }
 
 .toast-actions-wrap {
@@ -364,6 +364,16 @@
   color: var(--accent-text);
 }
 
+.toast-error {
+  border-color: color-mix(in srgb, var(--danger) 48%, var(--line));
+  color: var(--danger);
+}
+
+.toast-warning {
+  border-color: color-mix(in srgb, var(--gold) 48%, var(--line));
+  color: var(--gold);
+}
+
 .toast-info {
   border-color: rgba(123, 140, 172, 0.24);
   color: var(--blue);
@@ -387,6 +397,16 @@
 }
 
 .find-bar.hidden { display: none; }
+
+.find-status {
+  min-width: 20px;
+  padding: 0 4px;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+}
 
 #findInput {
   width: 180px;
@@ -431,13 +451,15 @@
 .modal-backdrop {
   position: absolute;
   inset: var(--chrome-height) 0 0 0;
-  z-index: 700;
+  z-index: 1200;
   display: grid;
   place-items: center;
-  padding: 24px;
-  background: rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  padding: 28px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(200, 255, 0, 0.08), transparent 38%),
+    rgba(7, 7, 10, 0.72);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
 }
 
 .modal-backdrop.hidden {
@@ -445,6 +467,7 @@
 }
 
 .about-panel {
+  position: relative;
   width: min(300px, calc(100vw - 48px));
   display: grid;
   grid-template-columns: 54px 1fr;
@@ -460,21 +483,35 @@
 }
 
 .settings-panel {
-  width: min(560px, calc(100vw - 48px));
+  width: min(720px, calc(100vw - 56px));
+  max-height: min(680px, calc(100vh - var(--chrome-height) - 56px));
+  overflow: auto;
   display: grid;
   gap: 18px;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--surface-raised) 88%, transparent);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  padding: 22px;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-raised) 98%, #08070a 2%);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.48), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
   animation: panel-open 150ms var(--ease-standard) both;
 }
 
 .modal-panel-compact {
   width: min(420px, calc(100vw - 48px));
+  max-height: min(280px, calc(100vh - var(--chrome-height) - 56px));
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-raised) 98%, #08070a 2%);
+  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.40), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  animation: panel-open 150ms var(--ease-standard) both;
 }
 
 .modal-actions {
@@ -516,6 +553,10 @@
 .settings-field {
   display: grid;
   gap: 7px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--glass-pane) 82%, transparent);
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
@@ -549,6 +590,10 @@
 .settings-shortcuts {
   display: grid;
   gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--glass-pane) 72%, transparent);
 }
 
 .settings-section-title {
@@ -566,8 +611,74 @@
 
 .shortcut-editor-row {
   display: grid;
-  grid-template-columns: minmax(120px, 0.72fr) minmax(160px, 1fr);
+  grid-template-columns: minmax(120px, 0.72fr) minmax(160px, 1fr) 32px;
   gap: 8px;
+  align-items: center;
+}
+
+.shortcut-remove-row {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--quiet);
+  background: var(--button-bg);
+}
+
+.shortcut-remove-row:hover {
+  color: var(--red);
+  background: var(--danger-soft);
+  border-color: var(--line-strong);
+}
+
+.shortcut-remove-row:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.shortcut-add-row {
+  justify-self: start;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.shortcut-add-row:hover {
+  border-color: var(--accent-line);
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+
+.shortcut-add-row:focus-visible {
+  outline: none;
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.prompt-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--chrome-soft);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.prompt-input:focus-visible {
+  outline: none;
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 @keyframes panel-open {
@@ -587,6 +698,15 @@
     grid-template-columns: 1fr;
   }
 }
+@media (max-width: 480px) {
+  .settings-panel { padding: 16px; gap: 14px; }
+  .settings-header h2 { font-size: 17px; }
+  .shortcut-editor-row { grid-template-columns: 1fr; gap: 6px; }
+  .modal-backdrop { padding: 16px; }
+  .toast-region { width: calc(100vw - 24px); right: 12px; }
+  .find-bar { right: 8px; }
+  #findInput { width: 140px; }
+}
 
 .about-mark {
   width: 54px;
@@ -597,9 +717,6 @@
   border-radius: 14px;
   background: var(--glass-pane);
   color: var(--accent-text);
-  font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 800;
 }
 
 .about-copy h2,
@@ -621,16 +738,17 @@
 }
 
 .about-close {
-  grid-column: 2;
-  justify-self: end;
-  min-width: 76px;
-  height: 30px;
-  padding: 0 12px;
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  min-width: 60px;
+  height: 28px;
+  padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--button-bg);
   color: var(--text);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 

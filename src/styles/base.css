@@ -5,112 +5,105 @@
   font-display: swap;
 }
 
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+*, *::before, *::after { box-sizing: border-box; }
 
 :root {
   color-scheme: dark;
-  --bg: #141017;
-  --chrome: rgba(30, 24, 35, 0.88);
-  --chrome-soft: rgba(38, 31, 45, 0.82);
-  --surface: rgba(43, 36, 51, 0.86);
-  --surface-raised: rgba(52, 44, 61, 0.92);
-  --line: rgba(227, 238, 207, 0.18);
-  --line-strong: rgba(227, 238, 207, 0.3);
-  --text: #f1e7d6;
-  --muted: #ccbba1;
-  --quiet: #9f8f79;
-  --volt: #C8FF00;
-  --accent: #C8FF00;
-  --accent-text: #d9ff57;
-  --accent-soft: rgba(200, 255, 0, 0.12);
-  --accent-line: rgba(200, 255, 0, 0.34);
-  --accent-glow: rgba(200, 255, 0, 0.16);
-  --blue: #93aee0;
-  --teal: #87cdb5;
-  --gold: #C8FF00;
-  --red: #ff9388;
-  --violet: #bfa9eb;
-  --shadow: 0 18px 42px rgba(6, 4, 10, 0.42);
-  --app-gradient:
-    linear-gradient(145deg, rgba(54, 69, 14, 0.18), transparent 34%),
-    linear-gradient(235deg, rgba(70, 88, 114, 0.16), transparent 42%),
-    linear-gradient(180deg, rgba(25, 20, 31, 0.98), rgba(20, 16, 23, 1) 58%);
-  --chrome-alpha: rgba(33, 27, 39, 0.9);
-  --chrome-hover: rgba(227, 238, 207, 0.1);
-  --button-bg: rgba(227, 238, 207, 0.07);
-  --focus-ring: rgba(200, 255, 0, 0.32);
-  --focus-border: rgba(200, 255, 0, 0.58);
-  --tab-shadow: 0 12px 26px rgba(7, 5, 11, 0.42);
-  --address-inset: inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  --danger-soft: rgba(255, 147, 136, 0.18);
-  --bookmark-soft: rgba(200, 255, 0, 0.13);
-  --home-core-bg: #C8FF00;
-  --home-core-text: #151a08;
-  --shortcut-shadow: 0 12px 30px rgba(8, 6, 13, 0.28);
-  --panel-focus-bg: rgba(66, 56, 78, 0.84);
-  --glass-blur: 10px;
-  --glass-saturate: 116%;
-  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --glass-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 45%);
-  --glass-pane: rgba(255, 255, 255, 0.04);
-  --chrome-height: 124px;
-  --radius: 12px;
-  --font-ui: -apple-system, BlinkMacSystemFont, 'San Francisco', 'Helvetica Neue', sans-serif;
-  --font-display: var(--font-ui);
+  --bg: #080a0d;
+  --app-bg: #080a0d;
+  --chrome: #0d1015;
+  --chrome-soft: #11151c;
+  --chrome-alpha: rgba(13, 16, 21, 0.98);
+  --surface: #10151d;
+  --surface-raised: #151b24;
+  --surface-elevated: #1a222d;
+  --line: rgba(132, 150, 172, 0.20);
+  --line-strong: rgba(156, 180, 210, 0.34);
+  --text: #eef3f8;
+  --muted: #a7b2c0;
+  --quiet: #6f7a87;
+  --accent: #5aa7ff;
+  --accent-text: #9dcbff;
+  --accent-soft: rgba(90, 167, 255, 0.10);
+  --accent-line: rgba(90, 167, 255, 0.40);
+  --accent-glow: rgba(90, 167, 255, 0.12);
+  --blue: #5aa7ff;
+  --teal: #67d6c0;
+  --gold: #c8ff00;
+  --red: #ff6f6f;
+  --violet: #9e8cff;
+  --danger: #ff6f6f;
+  --shadow: 0 16px 36px rgba(0, 0, 0, 0.36);
+  --app-gradient: linear-gradient(180deg, #0b0e13 0%, #080a0d 58%, #07090c 100%);
+  --chrome-hover: rgba(140, 160, 184, 0.10);
+  --button-bg: rgba(139, 158, 182, 0.07);
+  --focus-ring: rgba(90, 167, 255, 0.24);
+  --focus-border: rgba(90, 167, 255, 0.60);
+  --tab-shadow: none;
+  --address-inset: inset 0 1px 0 rgba(255,255,255,0.04);
+  --danger-soft: rgba(255, 111, 111, 0.13);
+  --bookmark-soft: rgba(90, 167, 255, 0.11);
+  --home-core-bg: #5aa7ff;
+  --home-core-text: #07111d;
+  --shortcut-shadow: none;
+  --panel-focus-bg: #19212c;
+  --glass-blur: 0px;
+  --glass-saturate: 100%;
+  --glass-shadow: none;
+  --glass-highlight: none;
+  --glass-pane: rgba(139, 158, 182, 0.06);
+  --chrome-height: 100px;
+  --radius: 8px;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
   --font-mono: 'Orbit Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --traffic-close: #ff5f57;
   --traffic-minimize: #febc2e;
   --traffic-maximize: #31c251;
-  --motion-fast: 140ms;
-  --motion-base: 200ms;
+  --motion-fast: 110ms;
+  --motion-base: 160ms;
   --ease-standard: cubic-bezier(0.2, 0.78, 0.14, 1);
 }
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --bg: #f4eee2;
-  --chrome: rgba(255, 251, 246, 0.9);
-  --chrome-soft: rgba(251, 246, 237, 0.92);
-  --surface: rgba(255, 250, 243, 0.95);
-  --surface-raised: rgba(255, 252, 247, 1);
-  --line: rgba(116, 93, 64, 0.2);
-  --line-strong: rgba(116, 93, 64, 0.34);
-  --text: #2f2119;
-  --muted: #665140;
-  --quiet: #856d57;
-  --accent: #C8FF00;
-  --accent-text: #4d6500;
-  --accent-soft: rgba(200, 255, 0, 0.18);
-  --accent-line: rgba(111, 145, 0, 0.32);
-  --accent-glow: rgba(111, 145, 0, 0.1);
-  --blue: #3d5f8e;
-  --teal: #2f7968;
-  --gold: #5c7600;
-  --red: #b54d45;
-  --violet: #664f99;
-  --shadow: 0 12px 28px rgba(66, 45, 28, 0.14);
-  --app-gradient:
-    linear-gradient(145deg, rgba(200, 255, 0, 0.1), transparent 34%),
-    linear-gradient(235deg, rgba(72, 102, 145, 0.1), transparent 42%),
-    linear-gradient(180deg, rgba(250, 243, 232, 0.98), rgba(244, 238, 226, 1) 56%);
-  --chrome-alpha: rgba(255, 251, 246, 0.9);
-  --chrome-hover: rgba(116, 93, 64, 0.08);
-  --button-bg: rgba(255, 251, 246, 0.94);
-  --focus-ring: rgba(111, 145, 0, 0.28);
-  --focus-border: rgba(111, 145, 0, 0.5);
-  --tab-shadow: 0 8px 20px rgba(84, 59, 37, 0.14);
-  --address-inset: inset 0 1px 0 rgba(255, 255, 255, 0.92);
-  --danger-soft: rgba(181, 77, 69, 0.12);
-  --bookmark-soft: rgba(200, 255, 0, 0.18);
-  --home-core-bg: #C8FF00;
-  --home-core-text: #151a08;
-  --shortcut-shadow: 0 8px 20px rgba(95, 67, 42, 0.14);
-  --panel-focus-bg: rgba(255, 250, 243, 1);
-  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.84);
-  --glass-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.16) 52%);
-  --glass-pane: rgba(255, 255, 255, 0.82);
+  --bg: #e8edf2;
+  --app-bg: #e8edf2;
+  --chrome: #e5ebf1;
+  --chrome-soft: #dce4ec;
+  --chrome-alpha: rgba(229, 235, 241, 0.98);
+  --surface: #f3f6f9;
+  --surface-raised: #ffffff;
+  --surface-elevated: #ffffff;
+  --line: rgba(54, 67, 82, 0.18);
+  --line-strong: rgba(54, 67, 82, 0.32);
+  --text: #121820;
+  --muted: #445161;
+  --quiet: #6d7987;
+  --accent: #176fc2;
+  --accent-text: #0b5eb0;
+  --accent-soft: rgba(23, 111, 194, 0.10);
+  --accent-line: rgba(23, 111, 194, 0.30);
+  --accent-glow: rgba(23, 111, 194, 0.10);
+  --blue: #176fc2;
+  --teal: #087e72;
+  --gold: #657d00;
+  --red: #a33b3b;
+  --danger: #a33b3b;
+  --violet: #6554b8;
+  --shadow: 0 12px 26px rgba(34, 45, 58, 0.14);
+  --app-gradient: linear-gradient(180deg, #eef3f7 0%, #e8edf2 100%);
+  --chrome-hover: rgba(54, 67, 82, 0.08);
+  --button-bg: rgba(54, 67, 82, 0.06);
+  --focus-ring: rgba(23, 111, 194, 0.20);
+  --focus-border: rgba(23, 111, 194, 0.54);
+  --address-inset: inset 0 1px 0 rgba(255,255,255,0.65);
+  --danger-soft: rgba(163, 59, 59, 0.10);
+  --bookmark-soft: rgba(23, 111, 194, 0.10);
+  --panel-focus-bg: #ffffff;
+  --glass-pane: rgba(54, 67, 82, 0.05);
+  --home-core-bg: #176fc2;
+  --home-core-text: #ffffff;
 }
 
 html, body {
@@ -120,81 +113,26 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-ui);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.35;
   user-select: text;
   -webkit-font-smoothing: antialiased;
 }
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { min-height: 32px; border: 3px solid transparent; border-radius: 999px; background: rgba(150, 170, 195, 0.30); background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(170, 190, 215, 0.46); background-clip: padding-box; }
+::-webkit-scrollbar-corner { background: transparent; }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  min-height: 32px;
-  border: 3px solid transparent;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.24);
-  background-clip: padding-box;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.38);
-  background-clip: padding-box;
-}
-
-:root[data-theme='light'] ::-webkit-scrollbar-thumb {
-  background: rgba(47, 33, 25, 0.22);
-  background-clip: padding-box;
-}
-
-:root[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(47, 33, 25, 0.36);
-  background-clip: padding-box;
-}
-
-::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-button, input {
-  margin: 0;
-  border: 0;
-  font: inherit;
-  color: inherit;
-}
-
+button, input { margin: 0; border: 0; font: inherit; color: inherit; }
 button {
   background: transparent;
   cursor: pointer;
-  transition:
-    color var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard),
-    background-color var(--motion-fast) var(--ease-standard),
-    box-shadow var(--motion-base) var(--ease-standard),
-    transform var(--motion-fast) var(--ease-standard);
+  transition: color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
 }
-
-input {
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  outline: 0;
-  box-shadow: none;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-button:focus-visible:not(:disabled),
-input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
+input { min-width: 0; border: 0; background: transparent; outline: 0; box-shadow: none; -webkit-appearance: none; appearance: none; }
+button:focus-visible:not(:disabled), input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 #app {
   position: relative;
@@ -205,49 +143,21 @@ input:focus-visible {
   isolation: isolate;
 }
 
-#app::before,
-#app::after {
+#app::before {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: -1;
-}
-
-#app::before {
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.07), transparent 22%, transparent 78%, rgba(255, 255, 255, 0.04)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 30%);
+    linear-gradient(90deg, rgba(90, 167, 255, 0.055), transparent 26%, transparent 76%, rgba(90, 167, 255, 0.035)),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.018) 0, rgba(255,255,255,0.018) 1px, transparent 1px, transparent 28px);
 }
 
-#app::after {
-  background:
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.012) 0,
-      rgba(255, 255, 255, 0.012) 1px,
-      transparent 1px,
-      transparent 3px
-    ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 28%);
-}
-
-.icon path, .icon rect {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.icon circle {
-  fill: currentColor;
-}
+.icon path, .icon rect { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.icon circle { fill: currentColor; }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  .home-shell, .error-page { animation: none !important; }
 }

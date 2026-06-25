@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use tauri::{AppHandle, Emitter};
@@ -9,6 +10,18 @@ const DOWNLOAD_EXTENSIONS: &[&str] = &[
     "zip", "tar", "gz", "bz2", "xz", "7z", "rar", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
     "dmg", "pkg", "app", "exe", "msi", "deb", "rpm", "torrent", "iso", "img",
 ];
+
+static DOWNLOAD_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+fn download_client() -> &'static reqwest::Client {
+    DOWNLOAD_CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(120))
+            .build()
+            .expect("Orbit download HTTP client should initialize")
+    })
+}
 
 /// Check if a URL likely points to a downloadable file.
 pub fn is_download_url(url: &str) -> bool {
@@ -176,12 +189,7 @@ pub async fn download_file(app: AppHandle, url: String) -> Result<String, String
     );
 
     // Download
-    let client = reqwest::Client::builder()
-        .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_secs(120))
-        .build()
-        .map_err(|e| format!("Failed to initialize HTTP client: {e}"))?;
-    let response = client
+    let response = download_client()
         .get(parsed_url)
         .send()
         .await
