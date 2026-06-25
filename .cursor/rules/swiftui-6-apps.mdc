@@ -1,0 +1,65 @@
+---
+description: "SwiftUI 6 app conventions for modern Apple platform apps"
+globs: "**/*.swift"
+alwaysApply: false
+---
+
+# SwiftUI 6 App Rules
+
+Use these rules when creating or modifying SwiftUI app code.
+
+## Modern SwiftUI
+
+- Prefer `@Observable` over `ObservableObject` for new shared state.
+- Use `@State` for view-owned state.
+- Mark `@State` properties `private`.
+- Use `@Binding` only when a child view must modify parent state.
+- Use `@Bindable` when an injected observable model needs bindings.
+- Keep view `body` pure: no side effects, no blocking work, no heavy computation.
+- Move business logic into testable model/service types instead of embedding it in views.
+
+## Navigation and Presentation
+
+- Use `NavigationStack`, not `NavigationView`.
+- Use `navigationDestination(for:)` for type-safe navigation.
+- Prefer `.sheet(item:)` for model-driven sheets.
+- Sheets should own their dismiss action through `dismiss()`.
+- Avoid global singleton navigation state unless the app architecture explicitly requires it.
+
+## View Composition
+
+- Keep views small and composable.
+- Extract complex sections into separate views.
+- Prefer modifiers over conditional branches when changing visual state to preserve view identity.
+- Use stable identity in `ForEach`; do not use `.indices` for dynamic collections.
+- Avoid `AnyView` in repeated rows or performance-sensitive views.
+- Avoid object creation and expensive formatting in `body`.
+
+## Modern APIs
+
+- Use `foregroundStyle()` instead of `foregroundColor()`.
+- Use `clipShape(.rect(cornerRadius:))` instead of `cornerRadius()`.
+- Use `Button` instead of `onTapGesture()` unless gesture location/count is required.
+- Use modern `onChange` variants with zero or two parameters.
+- Use `.task` and `.task(id:)` for async work that should cancel automatically.
+- Avoid `UIScreen.main.bounds` and fixed screen assumptions.
+- Avoid `GeometryReader` unless no simpler layout API fits.
+
+## Async and Concurrency
+
+- Keep UI state updates on the main actor.
+- Use structured concurrency.
+- Do not launch untracked detached tasks from views.
+- Cancel long-running work when views disappear or task inputs change.
+- Surface async errors in UI state instead of silently swallowing them.
+
+## Quality Gate
+
+Before considering SwiftUI work complete:
+
+- The app builds.
+- New state flows have a real source of truth.
+- Important user actions have loading, empty, and error states.
+- Dynamic lists use stable identity.
+- UI works in light/dark mode unless the product intentionally supports only one.
+- Accessibility labels exist for icon-only controls.

@@ -1,0 +1,73 @@
+---
+description: "macOS menu bar app conventions for SwiftUI/AppKit hybrid apps"
+globs: "**/*.swift"
+alwaysApply: false
+---
+
+# macOS Menu Bar App Rules
+
+Use these rules when building or modifying macOS menu bar apps.
+
+## App Structure
+
+- Prefer native macOS APIs for menu bar behavior.
+- Use `MenuBarExtra` for SwiftUI-first menu bar apps when it fits the product.
+- Use `NSStatusItem`/AppKit when advanced control is needed.
+- Keep menu bar state minimal, fast, and reliable.
+- Do not block the main thread during menu opening, status refresh, or background polling.
+
+## Menu Bar UX
+
+- The menu bar item must communicate state clearly:
+  - idle
+  - active
+  - syncing/processing
+  - error
+  - disabled/unavailable
+- Avoid noisy animations or frequent status changes.
+- Provide a clear primary action near the top of the menu/popover.
+- Provide access to settings/preferences.
+- Provide a quit command.
+- Keep menu/popover content compact and scannable.
+
+## Popovers and Windows
+
+- Use a popover for quick interactions.
+- Use a separate settings window for configuration-heavy screens.
+- Do not overload the menu bar popover with full app complexity.
+- Preserve window focus behavior expected on macOS.
+- Avoid stealing focus unexpectedly.
+
+## Background Work
+
+- Use timers, async tasks, or background services carefully.
+- Pause or throttle background work when not needed.
+- Persist user settings.
+- Restore app state safely after restart.
+- Surface failures through visible status, not hidden logs only.
+
+## Permissions and Privacy
+
+- Request macOS permissions only when needed.
+- Explain why permissions are needed before triggering system prompts.
+- Never collect clipboard, screen, microphone, accessibility, contacts, or file data without explicit user action and visible product reason.
+- Store secrets in Keychain where appropriate.
+- Avoid writing sensitive data to logs.
+
+## Launch and Login Behavior
+
+- Do not add login items without explicit user approval.
+- If login-at-startup is offered, make it user-toggleable.
+- Verify launch behavior after packaging changes.
+
+## Quality Gate
+
+Before considering menu bar work complete:
+
+- The app launches.
+- The menu bar item appears.
+- The primary menu/popover opens reliably.
+- Settings/preferences are reachable if present.
+- Quit works.
+- Permission prompts are justified and not repeated unnecessarily.
+- Background tasks do not freeze the menu.
