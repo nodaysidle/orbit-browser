@@ -1,0 +1,135 @@
+---
+description: "Generic software audit rules for code quality, security, architecture, UX, and release readiness"
+alwaysApply: false
+---
+
+# Audit Rules
+
+Use this rule when explicitly asked to audit, review, assess, score, or find risks in a codebase.
+
+## Audit Mode
+
+- Stay read-only unless implementation is explicitly approved.
+- Do not fix issues during an audit unless the user asks for fixes.
+- Separate evidence from opinion.
+- Cite exact files, commands, docs, screenshots, or runtime observations.
+- Do not claim a check passed unless it was actually run.
+- Mark unknowns as `UNKNOWN`.
+- Mark blocked checks as `BLOCKED` with the exact blocker.
+
+## Audit Scope
+
+Identify and report:
+
+1. Product/functionality risks
+2. Architecture risks
+3. Security/privacy risks
+4. Data/persistence risks
+5. UI/UX/accessibility risks
+6. Performance risks
+7. Build/test/release risks
+8. Repo hygiene risks
+9. Documentation gaps
+10. Highest-leverage next fixes
+
+## Evidence Standard
+
+For each important finding, include:
+
+- Severity: Critical / High / Medium / Low
+- Location: file path, route, screen, command, or config
+- Evidence: exact observed behavior or source excerpt
+- Why it matters
+- Recommended fix
+- Verification command or manual check
+
+## Scoring
+
+If asked for a score, score honestly.
+
+Suggested dimensions:
+
+- Functionality
+- Architecture
+- Security
+- UX/accessibility
+- Performance
+- Test coverage
+- Release readiness
+- Maintainability
+
+Do not inflate scores because the app builds.
+A build passing is not the same as product readiness.
+
+## Red Flags
+
+Flag immediately:
+
+- Fake/mock data presented as real functionality
+- Dead buttons or placeholder routes
+- Silent error swallowing
+- Broad filesystem/network permissions
+- Missing input validation
+- Destructive persistence changes
+- Secrets in source control
+- Overbroad app permissions
+- Broken build/test/release commands
+- Inaccessible icon-only controls
+- Claims in README that the app does not satisfy
+
+## Output Format
+
+Use this structure:
+
+```md
+## Verdict
+
+PASS / PARTIAL / FAIL / BLOCKED
+
+## Score
+
+x/10
+
+## Critical Findings
+
+| Severity | Finding | Evidence | Fix |
+|---|---|---|---|
+
+## High Findings
+
+| Severity | Finding | Evidence | Fix |
+|---|---|---|---|
+
+## Medium / Low Findings
+
+| Severity | Finding | Evidence | Fix |
+|---|---|---|---|
+
+## Good Signals
+
+- ...
+
+## Verification Performed
+
+- Command/check:
+- Result:
+
+## Verification Not Performed
+
+- Check:
+- Reason:
+
+## Recommended Next Step
+
+1. ...
+```
+
+## Audit Completion Rule
+
+Do not say the audit is complete unless:
+
+- The requested scope was inspected.
+- Findings are evidence-backed.
+- Unknowns are labeled.
+- Blockers are explicit.
+- Next fixes are concrete.

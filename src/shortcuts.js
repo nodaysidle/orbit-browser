@@ -4,6 +4,7 @@ const EDITABLE_SHORTCUT_KEYS = new Set(['l', 'r', 'f', 'g', '[', ']', '.', 'h'])
 
 const SHORTCUT_ACTIONS = new Map([
   ['t', { type: 'new-tab' }],
+  [',', { type: 'settings' }],
   ['shift+h', { type: 'home' }],
   ['w', { type: 'close-tab' }],
   ['l', { type: 'focus-address' }],
@@ -14,12 +15,16 @@ const SHORTCUT_ACTIONS = new Map([
   ['+', { type: 'zoom-in' }],
   ['-', { type: 'zoom-out' }],
   ['0', { type: 'reset-zoom' }],
-  ['shift+r', { type: 'toggle-reader' }],
   ['.', { type: 'stop' }],
   ['[', { type: 'back' }],
   [']', { type: 'forward' }],
   ['shift+[', { type: 'previous-tab' }],
   ['shift+]', { type: 'next-tab' }],
+  ['y', { type: 'show-history' }],
+])
+
+const OPTION_SHORTCUT_ACTIONS = new Map([
+  ['b', { type: 'show-bookmarks' }],
 ])
 
 const TAB_MOVE_ACTIONS = new Map([
@@ -37,6 +42,7 @@ export function getShortcutIntent(event) {
 
   const key = event.key.toLowerCase()
   if (event.altKey && event.shiftKey && event.metaKey) return TAB_MOVE_ACTIONS.get(key) || null
+  if (event.altKey && event.metaKey && !event.shiftKey) return OPTION_SHORTCUT_ACTIONS.get(key) || null
   if (isEditableTarget(event.target) && !EDITABLE_SHORTCUT_KEYS.has(key)) return null
   if (event.key >= '1' && event.key <= '9') {
     return { type: 'switch-tab-index', index: Number.parseInt(event.key, 10) - 1 }
@@ -46,7 +52,7 @@ export function getShortcutIntent(event) {
 
 export function createShortcutHandlers({
   $, absorb, command, state, createTab, closeTab, openFindBar, findNext,
-  toggleReaderMode, openBookmarksPanel, openHistoryPanel, openSettingsPanel,
+  openBookmarksPanel, openHistoryPanel, openSettingsPanel,
   cycleTab, moveActiveTab, switchTab, zoomIn, zoomOut, resetZoom, goHome,
 }) {
   return {
@@ -60,7 +66,6 @@ export function createShortcutHandlers({
     'zoom-in': () => absorb(zoomIn()),
     'zoom-out': () => absorb(zoomOut()),
     'reset-zoom': () => absorb(resetZoom()),
-    'toggle-reader': () => toggleReaderMode(),
     stop: () => absorb(command('stop_tab', { tabId: state.activeId }, 'Could not stop loading')),
     back: () => absorb(command('go_back', { tabId: state.activeId }, 'Could not go back')),
     forward: () => absorb(command('go_forward', { tabId: state.activeId }, 'Could not go forward')),
@@ -70,9 +75,6 @@ export function createShortcutHandlers({
     'switch-tab-index': intent => {
       const tab = [...state.tabs.values()][intent.index]
       if (tab) absorb(switchTab(tab.id))
-    },
-    'actual-size': () => {
-      absorb(resetZoom())
     },
     'show-bookmarks': () => absorb(openBookmarksPanel()),
     'show-history': () => absorb(openHistoryPanel()),

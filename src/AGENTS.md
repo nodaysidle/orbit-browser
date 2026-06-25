@@ -14,6 +14,7 @@ Owns the main application UI/runtime source for this project.
 - `styles`
 - `styles.css`
 - `utils`
+- `zoom.js`
 
 ## Local Contracts
 

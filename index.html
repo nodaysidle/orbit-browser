@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark" data-theme-preference="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)" />
-  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#080a0d" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#e8edf2" media="(prefers-color-scheme: light)" />
   <title>Orbit</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='7' fill='none' stroke='%235aa7ff' stroke-width='1.6'/%3E%3Ccircle cx='10' cy='10' r='2.8' fill='%235aa7ff'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="src/styles.css" />
 </head>
 <body>
-  <div id="app">
+  <div id="app" aria-busy="true">
     <header class="titlebar" data-tauri-drag-region>
       <div class="traffic-lights">
         <button id="btnClose" class="traffic close" aria-label="Close window"></button>
@@ -17,14 +18,19 @@
         <button id="btnMaximize" class="traffic maximize" aria-label="Maximize window"></button>
       </div>
       <div class="brand-lockup" data-tauri-drag-region>
-        <span class="brand-mark">O</span>
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <circle cx="10" cy="10" r="2.8" fill="currentColor"/>
+          </svg>
+        </span>
         <span class="brand-name">Orbit</span>
       </div>
       <div class="tab-count" id="tabCount">0 tabs</div>
     </header>
 
     <section class="tab-bar" aria-label="Tabs">
-      <div class="tabs-scroll" id="tabsContainer"></div>
+      <div class="tabs-scroll" id="tabsContainer" role="tablist" aria-label="Open tabs"></div>
       <button class="new-tab-btn" id="btnNewTab" aria-label="New tab" type="button">
         <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
@@ -62,7 +68,7 @@
         </button>
       </div>
 
-      <div class="address-wrap" id="addressWrap">
+      <div class="address-wrap" id="addressWrap" data-scheme="search" data-url-preview="">
         <div class="address-status" id="lockIcon" aria-hidden="true">
           <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
             <rect x="5" y="9" width="10" height="7" rx="2" stroke="currentColor" stroke-width="1.6"/>
@@ -98,42 +104,76 @@
 
     <div class="chrome-progress" id="chromeProgress" aria-hidden="true"></div>
 
-    <main class="new-tab-page" id="newTabPage">
+    <main class="new-tab-page" id="newTabPage" role="tabpanel" aria-label="Browser page">
       <div class="home-shell" id="homeContent">
-        <div class="home-orbit" aria-hidden="true">
-          <span class="ring ring-one"></span>
-          <span class="ring ring-two"></span>
-          <span class="ring ring-three"></span>
-          <span class="orbit-core">O</span>
-        </div>
-        <h1 class="home-title">Orbit</h1>
-        <form class="home-search" id="newTabSearchForm">
-          <div class="home-search-icon" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-              <path d="m14 14 3 3M15 9.5A5.5 5.5 0 1 1 4 9.5a5.5 5.5 0 0 1 11 0Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-            </svg>
+        <section class="start-search-section" aria-label="Search or enter address">
+          <form class="home-search" id="newTabSearchForm">
+            <div class="home-search-icon" aria-hidden="true"></div>
+            <input id="newTabSearchInput" type="text" autocomplete="off" spellcheck="false" placeholder="Search or enter address" aria-label="Search or enter address" />
+            <span class="home-search-hint" aria-hidden="true">Return</span>
+          </form>
+        </section>
+
+        <section class="start-section continue-section" aria-labelledby="continueTitle">
+          <div class="start-section-header">
+            <h2 id="continueTitle">Continue Working</h2>
+            <span id="sessionSummary">Current tabs and restore points</span>
           </div>
-          <input id="newTabSearchInput" type="text" autocomplete="off" spellcheck="false" placeholder="Search or enter address" aria-label="Search or enter address" />
-        </form>
-        <div class="shortcuts-row" id="shortcutsRow" aria-label="Shortcuts"></div>
-        <section class="recent-section" aria-label="Recent pages">
-          <div class="recent-header">
-            <span>Recently visited</span>
+          <div class="workbench-summary" id="workbenchSummary" aria-label="Local workbench resume status">
+            <div class="workbench-stat">
+              <span class="workbench-stat-label">Working On</span>
+              <strong id="workbenchCurrentWork">Start from command</strong>
+            </div>
+            <div class="workbench-stat">
+              <span class="workbench-stat-label">Resume</span>
+              <strong id="workbenchResumeTarget">Recent work</strong>
+            </div>
+            <div class="workbench-stat">
+              <span class="workbench-stat-label">Continue</span>
+              <strong id="workbenchNextStep">Open a work tab</strong>
+            </div>
+          </div>
+          <div class="project-grid" id="projectCards" aria-label="Saved projects"></div>
+          <div class="continue-grid" id="continueTabs" aria-label="Current tabs"></div>
+          <div class="session-strip" id="recentSessions" aria-label="Restore context">
+            <button class="session-chip" type="button" data-session-action="save-project">Save current work</button>
+            <button class="session-chip muted" type="button" data-session-action="update-project">Update project</button>
+          </div>
+        </section>
+
+        <section class="start-section favorites-section" aria-labelledby="openTitle">
+          <div class="start-section-header">
+            <h2 id="openTitle">Open Something</h2>
+            <span>Favorites</span>
+          </div>
+          <div class="shortcuts-row" id="shortcutsRow" aria-label="Favorite sites"></div>
+        </section>
+
+        <section class="start-section recent-section" aria-labelledby="activityTitle">
+          <div class="start-section-header">
+            <h2 id="activityTitle">Recent Activity</h2>
+            <span>Pages and context</span>
           </div>
           <div class="recent-grid" id="recentPages">
             <div class="recent-empty recent-empty-with-suggestions">
-              <span>Start with a useful destination.</span>
-            </div>
-            <div class="recent-suggestions" aria-label="Suggested pages">
-              <button class="recent-suggestion-pill" type="button" data-recent-url="https://github.com" aria-label="Open GitHub"><span>GitHub</span></button>
-              <button class="recent-suggestion-pill" type="button" data-recent-url="https://youtube.com" aria-label="Open YouTube"><span>YouTube</span></button>
-              <button class="recent-suggestion-pill" type="button" data-recent-url="https://wikipedia.org" aria-label="Open Wikipedia"><span>Wikipedia</span></button>
+              <span>No recent activity yet.</span>
             </div>
           </div>
         </section>
+
+        <footer class="start-footer" aria-label="Orbit local trust status">
+          <span class="start-footer-mark">Local Browser State</span>
+          <span>Your work history and sessions are ready when you reopen Orbit.</span>
+        </footer>
       </div>
       <div class="error-page hidden" id="errorPage" role="status" aria-live="polite">
-        <div class="error-mark" aria-hidden="true">!</div>
+        <div class="error-mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 20 20" fill="none" class="icon">
+            <path d="M10 3.5 18 17.5H2L10 3.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M10 8.5v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <circle cx="10" cy="15" r="0.7" fill="currentColor"/>
+          </svg>
+        </div>
         <h1 id="errorTitle">Orbit could not open this page</h1>
         <p id="errorMessage">The navigation failed before a page could load.</p>
         <code id="errorUrl"></code>
@@ -145,13 +185,14 @@
     </main>
 
     <div class="dropdown hidden" id="menuDropdown" role="menu" aria-label="Browser menu">
+      <button class="dropdown-item" id="menuAbout" role="menuitem" tabindex="-1" type="button">About Orbit</button>
       <button class="dropdown-item" id="menuHistory" role="menuitem" tabindex="-1" type="button">History</button>
       <button class="dropdown-item" id="menuBookmarks" role="menuitem" tabindex="-1" type="button">Bookmarks</button>
       <button class="dropdown-item" id="menuSettings" role="menuitem" tabindex="-1" type="button">Settings…</button>
       <button class="dropdown-item danger" id="menuClearHistory" role="menuitem" tabindex="-1" type="button">Clear History</button>
     </div>
 
-    <section class="dropdown panel hidden" id="historyPanel" aria-label="History">
+    <section class="dropdown panel hidden" id="historyPanel" role="dialog" aria-modal="true" aria-label="History" tabindex="-1">
       <div class="panel-header">
         <span>History</span>
         <button class="panel-close" id="closeHistory" aria-label="Close history" type="button"></button>
@@ -160,7 +201,7 @@
       <div class="panel-list" id="historyList"></div>
     </section>
 
-    <section class="dropdown panel hidden" id="bookmarksPanel" aria-label="Bookmarks">
+    <section class="dropdown panel hidden" id="bookmarksPanel" role="dialog" aria-modal="true" aria-label="Bookmarks" tabindex="-1">
       <div class="panel-header">
         <span>Bookmarks</span>
         <button class="panel-close" id="closeBookmarks" aria-label="Close bookmarks" type="button"></button>
@@ -172,6 +213,7 @@
 
     <div class="find-bar hidden" id="findBar">
       <input id="findInput" type="text" placeholder="Find in page…" autocomplete="off" aria-label="Find in page" />
+      <span class="find-status" id="findStatus" aria-live="polite"></span>
       <button class="find-btn" id="findPrev" aria-label="Previous match" type="button"></button>
       <button class="find-btn" id="findNext" aria-label="Next match" type="button"></button>
       <button class="find-close" id="findClose" aria-label="Close find" type="button"></button>
@@ -179,7 +221,12 @@
 
     <div class="modal-backdrop hidden" id="aboutModal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
       <section class="about-panel">
-        <div class="about-mark" aria-hidden="true">O</div>
+        <div class="about-mark" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <circle cx="10" cy="10" r="2.8" fill="currentColor"/>
+          </svg>
+        </div>
         <div class="about-copy">
           <h2 id="aboutTitle">Orbit</h2>
           <p id="aboutVersion">Version 1.0.0</p>
@@ -193,7 +240,7 @@
         <div class="settings-header">
           <div>
             <h2 id="settingsTitle">Settings</h2>
-            <p>Local browser preferences for this Mac.</p>
+            <p>Browser preferences stay local on this Mac.</p>
           </div>
           <button class="panel-close" id="settingsClose" aria-label="Close settings" type="button"></button>
         </div>
@@ -225,12 +272,52 @@
         <div class="settings-shortcuts">
           <div class="settings-section-title">Shortcuts</div>
           <div class="shortcut-editor" id="shortcutEditor"></div>
+          <button class="shortcut-add-row" id="addShortcut" type="button">+ Add Shortcut</button>
           <button class="primary-action" id="saveShortcuts" type="button">Save Shortcuts</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop hidden" id="downloadModal" role="dialog" aria-modal="true" aria-labelledby="downloadTitle" aria-describedby="downloadMessage">
+      <section class="confirm-panel modal-panel-compact">
+        <div class="settings-header">
+          <div>
+            <h2 id="downloadTitle">Download file</h2>
+            <p id="downloadMessage">Choose whether to save this file to Downloads.</p>
+          </div>
+          <button class="panel-close" id="downloadCancelIcon" aria-label="Cancel download" type="button"></button>
+        </div>
+        <div class="error-actions modal-actions">
+          <button class="secondary-action" id="downloadCancel" type="button">Cancel</button>
+          <button class="primary-action" id="downloadConfirm" type="button">Download</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop hidden" id="promptModal" role="dialog" aria-modal="true" aria-labelledby="promptTitle">
+      <section class="confirm-panel modal-panel-compact">
+        <div class="settings-header">
+          <div>
+            <h2 id="promptTitle">Save Project</h2>
+            <p id="promptMessage">Enter a name for this project.</p>
+          </div>
+          <button class="panel-close" id="promptCancelIcon" aria-label="Cancel" type="button"></button>
+        </div>
+        <input id="promptInput" class="settings-input prompt-input" type="text" autocomplete="off" aria-label="Project name" />
+        <div class="error-actions modal-actions">
+          <button class="secondary-action" id="promptCancel" type="button">Cancel</button>
+          <button class="primary-action" id="promptConfirm" type="button">Save</button>
         </div>
       </section>
     </div>
   </div>
 
+  <noscript>
+    <div style="padding:48px;text-align:center;font-family:-apple-system,sans-serif;color:#eef3f8;background:#080a0d;min-height:100vh">
+      <h1 style="font-size:22px;margin:0 0 8px">Orbit needs JavaScript</h1>
+      <p style="color:#a7b2c0;margin:0">Enable JavaScript to use the browser.</p>
+    </div>
+  </noscript>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

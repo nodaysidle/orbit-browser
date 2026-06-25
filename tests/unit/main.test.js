@@ -17,6 +17,9 @@ test('getShortcutIntent resolves command shortcuts through the action map', asyn
   assert.deepEqual(getShortcutIntent({ key: '3', metaKey: true, ctrlKey: false, shiftKey: false }), { type: 'switch-tab-index', index: 2 })
   assert.deepEqual(getShortcutIntent({ key: 'Tab', metaKey: false, ctrlKey: true, shiftKey: false }), { type: 'next-tab' })
   assert.deepEqual(getShortcutIntent({ key: 'Tab', metaKey: false, ctrlKey: true, shiftKey: true }), { type: 'previous-tab' })
+  assert.deepEqual(getShortcutIntent({ key: ',', metaKey: true, ctrlKey: false, shiftKey: false }), { type: 'settings' })
+  assert.deepEqual(getShortcutIntent({ key: 'y', metaKey: true, ctrlKey: false, shiftKey: false }), { type: 'show-history' })
+  assert.deepEqual(getShortcutIntent({ key: 'b', metaKey: true, altKey: true, ctrlKey: false, shiftKey: false }), { type: 'show-bookmarks' })
 })
 
 test('getShortcutIntent ignores destructive shortcuts inside editable fields', async () => {
@@ -67,4 +70,22 @@ test('moveTabInMap reorders active tab without dropping tab data', async () => {
   assert.deepEqual(orderedIds, ['a', 'c', 'b'])
   assert.deepEqual([...moved.keys()], ['a', 'c', 'b'])
   assert.equal(moved.get('b').id, 'b')
+})
+
+test('projectTabsForResume returns saved Project tabs in restore order', async () => {
+  const { projectTabsForResume } = await loadMain()
+  const tabs = projectTabsForResume({
+    tabs: [
+      { url: 'https://docs.rs', position: 2 },
+      { url: 'https://github.com/nodaysidle/orbit-browser', position: 0 },
+      { url: 'http://localhost:3000', position: 1, is_active: true },
+    ],
+  })
+
+  assert.deepEqual(tabs.map(tab => tab.url), [
+    'https://github.com/nodaysidle/orbit-browser',
+    'http://localhost:3000',
+    'https://docs.rs',
+  ])
+  assert.equal(tabs[1].is_active, true)
 })

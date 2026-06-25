@@ -6,7 +6,7 @@ import { createFindController } from '../../src/find.js'
 
 function setupFindDom() {
   const document = installDom()
-  const ids = ['findBar', 'findInput']
+  const ids = ['findBar', 'findInput', 'findStatus']
   for (const id of ids) {
     const node = document.createElement('input')
     node.id = id

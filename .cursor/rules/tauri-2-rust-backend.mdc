@@ -1,0 +1,79 @@
+---
+description: "Tauri 2 desktop app conventions with Rust backend and web frontend"
+globs: "src-tauri/**/*,src/**/*.{ts,tsx,js,jsx,css,html},package.json,tauri.conf.json,Cargo.toml"
+alwaysApply: false
+---
+
+# Tauri 2 + Rust Backend Rules
+
+Use these rules when building or modifying Tauri 2 desktop apps.
+
+## Tauri 2 Configuration
+
+- Follow Tauri 2 schema.
+- Do not use deprecated Tauri 1 patterns unless the installed project version proves they are required.
+- Keep `tauri.conf.json` valid for Tauri 2.
+- Window title belongs in the window configuration, not as an invalid top-level field.
+- Include a capabilities file under `src-tauri/capabilities/`.
+- Add only the permissions the app actually needs.
+- Keep Content Security Policy strict.
+- Do not use `csp: null` for production apps.
+
+## Rust Backend
+
+- Keep Tauri commands small and explicit.
+- Validate all command inputs at the Rust boundary.
+- Return structured errors instead of panicking.
+- Do not expose broad filesystem access.
+- Canonicalize and scope paths before reading/writing user files.
+- Do not trust frontend-provided paths, URLs, IDs, or JSON.
+- Use async commands only when they actually perform async work.
+- Avoid blocking the main thread.
+
+## Frontend Bridge
+
+- Treat the Tauri command boundary as an API contract.
+- Type command inputs and outputs in the frontend.
+- Handle loading, success, empty, and error states for every command.
+- Do not assume command calls always succeed.
+- Do not silently swallow backend errors.
+- Keep frontend state synchronized with backend persistence.
+
+## Filesystem and Persistence
+
+- Use Tauri path APIs for app data/config/cache directories.
+- Do not hardcode user home paths.
+- Avoid destructive writes.
+- For database or file migrations, include a recovery path.
+- Do not drop user data without explicit approval.
+- Prefer small, reversible persistence changes.
+
+## Security
+
+- Never expose shell execution to the frontend without strict allowlists.
+- Never pass raw frontend strings into shell commands.
+- Avoid `unsafe-eval`.
+- Avoid broad plugin permissions.
+- Store secrets in secure storage where appropriate.
+- Keep external network access explicit and justified.
+
+## Packaging
+
+- Verify the frontend build before Tauri packaging.
+- Verify Rust checks/tests where available.
+- Verify the produced `.app`, installer, or bundle path.
+- For macOS, verify app launch after packaging.
+- Do not call packaging complete if the app bundle exists but cannot launch.
+
+## Quality Gate
+
+Before considering Tauri work complete:
+
+- Frontend build passes.
+- Rust check/test passes where available.
+- Tauri build passes.
+- Required capabilities exist.
+- CSP is production-safe.
+- App launches.
+- Main command flows are smoke-tested.
+- Dirty build artifacts are not accidentally committed.

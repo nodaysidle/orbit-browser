@@ -104,6 +104,7 @@ export function bindEvents(actions) {
       }
     }, 0)
   })
+  $('menuAbout')?.addEventListener('click', () => actions.absorb(actions.showAboutPanel?.()))
   $('menuHistory').addEventListener('click', () => actions.absorb(actions.openHistoryPanel()))
   $('menuBookmarks').addEventListener('click', () => actions.absorb(actions.openBookmarksPanel()))
   $('menuSettings')?.addEventListener('click', actions.openSettingsPanel)
@@ -180,6 +181,28 @@ export function bindEvents(actions) {
     if (row) actions.absorb(actions.navigate(row.dataset.recentUrl))
   })
 
+  $('continueTabs')?.addEventListener('click', event => {
+    const row = event.target.closest('[data-continue-tab-id]')
+    if (row) actions.absorb(actions.switchTab(row.dataset.continueTabId))
+  })
+
+  $('projectCards')?.addEventListener('click', event => {
+    const archive = event.target.closest('[data-project-archive-id]')
+    if (archive) {
+      event.stopPropagation?.()
+      actions.absorb(actions.archiveProject(archive.dataset.projectArchiveId))
+      return
+    }
+    const row = event.target.closest('[data-project-id]')
+    if (row) actions.absorb(actions.openProject(row.dataset.projectId))
+  })
+
+  $('recentSessions')?.addEventListener('click', event => {
+    const action = event.target.closest('[data-session-action]')?.dataset.sessionAction
+    if (action === 'save-project') actions.absorb(actions.saveCurrentWorkProject())
+    if (action === 'update-project') actions.absorb(actions.updateActiveProject())
+  })
+
   $('bookmarksList').addEventListener('click', event => {
     const remove = event.target.closest('[data-bookmark-delete]')
     if (remove) {
@@ -236,6 +259,9 @@ export function bindEvents(actions) {
     if (event.key === 'Escape' && !$('downloadModal')?.classList.contains('hidden')) {
       actions.cancelDownload?.()
     }
+    if (event.key === 'Escape' && !$('promptModal')?.classList.contains('hidden')) {
+      $('promptCancel')?.dispatchEvent(new Event('click'))
+    }
   })
   document.addEventListener('keydown', actions.handleShortcut)
   $('aboutClose')?.addEventListener('click', actions.closeAboutPanel)
@@ -252,10 +278,19 @@ export function bindEvents(actions) {
   $('downloadModal')?.addEventListener('click', event => {
     if (event.target === event.currentTarget) actions.cancelDownload?.()
   })
+  $('promptCancelIcon')?.addEventListener('click', () => $('promptCancel')?.dispatchEvent(new Event('click')))
   $('settingTheme')?.addEventListener('change', event => actions.absorb(actions.setThemePreference(event.target.value)))
   $('settingSearchEngine')?.addEventListener('change', event => actions.absorb(actions.changeSearchEngine(event.target.value)))
   $('settingStartup')?.addEventListener('change', event => actions.absorb(actions.changeStartupBehavior(event.target.value)))
   $('saveShortcuts')?.addEventListener('click', () => actions.absorb(actions.saveShortcutEdits()))
+  $('addShortcut')?.addEventListener('click', () => actions.addShortcutRow?.())
+  $('shortcutEditor')?.addEventListener('click', event => {
+    const remove = event.target.closest('[data-remove-shortcut-row]')
+    if (remove) {
+      const idx = parseInt(remove.dataset.removeShortcutRow, 10)
+      if (!Number.isNaN(idx)) actions.removeShortcutRow?.(idx)
+    }
+  })
   $('errorRetry')?.addEventListener('click', actions.retryErrorPage)
   $('errorHome')?.addEventListener('click', actions.errorPageHome)
   document.addEventListener('click', event => {

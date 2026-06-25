@@ -4,7 +4,7 @@ use tauri::{
     AppHandle, LogicalPosition, LogicalSize, Manager, Position, Rect, Size, WebviewWindow,
 };
 
-pub const CHROME_HEIGHT: f64 = 124.0;
+pub const CHROME_HEIGHT: f64 = 100.0;
 pub const MAX_OVERLAY_HEIGHT: f64 = 680.0;
 
 fn logical_size_from_window(win: &WebviewWindow) -> Result<(f64, f64), String> {
@@ -139,6 +139,38 @@ pub fn resize_active_webview_to(app: &AppHandle, width: f64, height: f64) -> Res
     Ok(())
 }
 
+pub fn set_active_webview_obscured(app: &AppHandle, obscured: bool) -> Result<(), String> {
+    let state = app.state::<BrowserState>();
+    let active = lock_state(&state.active_tab, "active_tab")?.clone();
+    let Some(id) = active else {
+        return Ok(());
+    };
+
+    let active_has_page = {
+        let tabs = lock_state(&state.tabs, "tabs")?;
+        tabs.get(&id)
+            .map(|tab| {
+                let url = tab.info.url.to_ascii_lowercase();
+                url.starts_with("http://") || url.starts_with("https://")
+            })
+            .unwrap_or(false)
+    };
+
+    let Some(wv) = app.get_webview(&id) else {
+        return Ok(());
+    };
+
+    if obscured || !active_has_page {
+        wv.hide().map_err(|e| e.to_string())?;
+    } else {
+        wv.set_bounds(active_webview_bounds(app, state.inner()))
+            .map_err(|e| e.to_string())?;
+        wv.show().map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -149,7 +181,7 @@ mod tests {
         match bounds.size {
             Size::Logical(size) => {
                 assert_eq!(size.width, 1261.0);
-                assert_eq!(size.height, 1213.0);
+                assert_eq!(size.height, 1237.0);
             }
             Size::Physical(_) => panic!("browser page bounds should stay in logical units"),
         }

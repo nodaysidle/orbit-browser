@@ -4,7 +4,9 @@ import assert from 'node:assert/strict'
 import { installDom } from './dom-shim.js'
 import {
   renderBookmarksList,
+  renderContinueTabs,
   renderHistoryList,
+  renderProjectCards,
   renderRecentPages,
   renderShortcutEditor,
   renderShortcutGrid,
@@ -29,7 +31,16 @@ test('renderTabs marks loading tabs as busy and updates count', () => {
   assert.equal(tabCount.textContent, '2 tabs')
   assert.equal(container.children.length, 2)
   assert.equal(container.children[0].classList.contains('loading'), true)
-  assert.equal(container.children[0].querySelector('.tab-main').getAttribute('aria-busy'), 'true')
+  const activeTab = container.children[0].querySelector('.tab-main')
+  const inactiveTab = container.children[1].querySelector('.tab-main')
+  assert.equal(activeTab.getAttribute('role'), 'tab')
+  assert.equal(activeTab.getAttribute('id'), 'tab-btn-t1')
+  assert.equal(activeTab.getAttribute('aria-controls'), 'newTabPage')
+  assert.equal(activeTab.getAttribute('aria-selected'), 'true')
+  assert.equal(activeTab.getAttribute('tabindex'), '0')
+  assert.equal(inactiveTab.getAttribute('aria-selected'), 'false')
+  assert.equal(inactiveTab.getAttribute('tabindex'), '-1')
+  assert.equal(activeTab.getAttribute('aria-busy'), 'true')
 })
 
 test('panel renderers show useful empty states', () => {
@@ -59,6 +70,7 @@ test('shortcut grid and editor render persisted shortcuts', () => {
   assert.equal(firstBtn.querySelector('.shortcut-letter').textContent, 'D')
   assert.equal(editor.querySelector('[data-shortcut-title]').value, 'Docs')
   assert.equal(editor.querySelector('[data-shortcut-url-input]').value, 'https://docs.rs')
+  assert.equal(editor.querySelector('[data-remove-shortcut-row]') !== null, true)
 })
 
 test('recent pages render openable cards', () => {
@@ -72,14 +84,38 @@ test('recent pages render openable cards', () => {
   assert.equal(container.children[0].querySelector('.recent-card-url').textContent, 'rust-lang.org')
 })
 
-test('recent pages empty state uses neutral useful suggestions', () => {
+test('project cards render resumable work', () => {
   const document = installDom()
   const container = document.createElement('div')
 
-  renderRecentPages(container, [])
-  const suggestions = [...container.querySelectorAll('.recent-suggestion-pill')]
-    .map(button => button.querySelector('span').textContent)
+  renderProjectCards(container, [{
+    id: 'p1',
+    name: 'Orbit Browser',
+    domains: ['github.com', 'localhost'],
+    tabs: [{ url: 'https://github.com/nodaysidle/orbit-browser' }],
+  }], 'p1')
 
-  assert.deepEqual(suggestions, ['GitHub', 'YouTube', 'Wikipedia'])
-  assert.equal(suggestions.some(title => /nodaysidle|gitlab/i.test(title)), false)
+  assert.equal(container.children.length, 1)
+  const card = container.children[0].querySelector('[data-project-id]')
+  assert.equal(card.dataset.projectId, 'p1')
+  assert.equal(card.classList.contains('active'), true)
+  assert.equal(card.querySelector('.continue-title').textContent, 'Orbit Browser')
+  assert.equal(card.querySelector('.continue-url').textContent, 'github.com / localhost')
+  assert.equal(card.querySelector('.continue-badge').textContent, 'Active')
+  assert.equal(container.children[0].querySelector('[data-project-archive-id]').dataset.projectArchiveId, 'p1')
+})
+
+test('continue tabs render active local session cards', () => {
+  const document = installDom()
+  const container = document.createElement('div')
+
+  renderContinueTabs(container, [
+    { id: 'a', title: 'GitHub', url: 'https://github.com/nodaysidle' },
+    { id: 'b', title: 'New Tab', url: '' },
+  ], 'a')
+
+  assert.equal(container.children.length, 1)
+  assert.equal(container.children[0].dataset.continueTabId, 'a')
+  assert.equal(container.children[0].classList.contains('active'), true)
+  assert.equal(container.children[0].querySelector('.continue-url').textContent, 'github.com')
 })

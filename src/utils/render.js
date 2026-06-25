@@ -45,7 +45,7 @@ export function renderBookmarksList(list, bookmarks = []) {
 }
 
 export function renderShortcutGrid(container, shortcuts = []) {
-  const tones = ['tone-blue', 'tone-red', 'tone-gold', 'tone-teal']
+  const tones = ['tone-blue', 'tone-violet', 'tone-gold', 'tone-teal']
   container.replaceChildren(...shortcuts.map((shortcut, index) => {
     const btn = el('button', {
       className: `shortcut-btn ${tones[index % tones.length]}`,
@@ -71,24 +71,11 @@ export function renderShortcutGrid(container, shortcuts = []) {
 
 export function renderRecentPages(container, entries = []) {
   if (!entries.length) {
-    const suggestions = [
-      { title: 'GitHub', url: 'https://github.com' },
-      { title: 'YouTube', url: 'https://youtube.com' },
-      { title: 'Wikipedia', url: 'https://wikipedia.org' },
-    ]
     container.replaceChildren(
       el('div', { className: 'recent-empty recent-empty-with-suggestions' }, [
         icon('clock', 16),
-        el('span', { text: 'Recent pages will appear here.' }),
-      ]),
-      el('div', { className: 'recent-suggestions' }, suggestions.map(s =>
-        el('button', {
-          className: 'recent-suggestion-pill',
-          type: 'button',
-          dataset: { recentUrl: s.url },
-          attrs: { 'aria-label': `Open ${s.title}` },
-        }, [el('span', { text: s.title })])
-      ))
+        el('span', { text: 'No recent activity yet.' }),
+      ])
     )
     return
   }
@@ -107,6 +94,69 @@ export function renderRecentPages(container, entries = []) {
         el('span', { className: 'recent-card-url', text: getUrlHost(entry.url) || entry.url }),
       ]),
     ])
+  }))
+}
+
+export function renderProjectCards(container, projects = [], activeProjectId = null) {
+  if (!container) return
+  if (!projects.length) {
+    container.replaceChildren()
+    return
+  }
+  container.replaceChildren(...projects.slice(0, 3).map(project => {
+    const domains = Array.isArray(project.domains) ? project.domains.slice(0, 2).join(' / ') : ''
+    const tabCount = Array.isArray(project.tabs) ? project.tabs.length : 0
+    const isActive = project.id === activeProjectId
+    const card = el('button', {
+      className: `project-card continue-card ${isActive ? 'active' : ''}`.trim(),
+      type: 'button',
+      dataset: { projectId: project.id },
+      attrs: { 'aria-label': `Resume ${project.name}` },
+    }, [
+      el('span', { className: 'project-mark panel-monogram tone-blue', text: project.name?.[0]?.toUpperCase() || 'P' }),
+      el('span', { className: 'continue-meta' }, [
+        el('span', { className: 'continue-title', text: project.name || 'Untitled Project' }),
+        el('span', { className: 'continue-url', text: domains || `${tabCount} page${tabCount === 1 ? '' : 's'}` }),
+      ]),
+      el('span', { className: 'continue-badge', text: isActive ? 'Active' : 'Resume' }),
+    ])
+    const archive = el('button', {
+      className: 'project-archive',
+      type: 'button',
+      text: 'Archive',
+      dataset: { projectArchiveId: project.id },
+      attrs: { 'aria-label': `Archive ${project.name}` },
+    })
+    return el('div', { className: 'project-card-wrap' }, [card, archive])
+  }))
+}
+
+export function renderContinueTabs(container, tabs = [], activeId = null) {
+  const webTabs = tabs.filter(tab => tab?.url).slice(0, 3)
+  if (!webTabs.length) {
+    container.replaceChildren(el('div', { className: 'recent-empty' }, [
+      icon('clock', 16),
+      el('span', { text: 'Open a page or restore a session to continue working here.' }),
+    ]))
+    return
+  }
+
+  container.replaceChildren(...webTabs.map(tab => {
+    const title = tab.title || getUrlHost(tab.url) || tab.url
+    const active = tab.id === activeId
+    return el('button', {
+      className: `continue-card ${active ? 'active' : ''}`.trim(),
+      type: 'button',
+      dataset: { continueTabId: tab.id },
+      attrs: { 'aria-label': `Switch to ${title}` },
+    }, [
+      renderMonogram(entryWithFavicon(tab), `panel-monogram ${getTabToneClass(tab)}`),
+      el('span', { className: 'continue-meta' }, [
+        el('span', { className: 'continue-title', text: title }),
+        el('span', { className: 'continue-url', text: getUrlHost(tab.url) || tab.url }),
+      ]),
+      active ? el('span', { className: 'continue-badge', text: 'Now' }) : null,
+    ].filter(Boolean))
   }))
 }
 
@@ -131,6 +181,12 @@ export function renderShortcutEditor(container, shortcuts = []) {
         'data-shortcut-url-input': String(index),
       },
     }),
+    el('button', {
+      className: 'shortcut-remove-row',
+      type: 'button',
+      dataset: { removeShortcutRow: String(index) },
+      attrs: { 'aria-label': `Remove shortcut ${index + 1}` },
+    }, [icon('close', 14)]),
   ])))
 }
 
@@ -139,13 +195,22 @@ function tabRow(tab, activeId) {
   const title = tab.title || 'New Tab'
   const active = tab.id === activeId ? ' active' : ''
   const loading = tab.loading ? ' loading' : ''
-  const row = el('div', { className: `tab ${tone}${active}${loading}`, attrs: { draggable: 'true' } })
+  const selected = tab.id === activeId
+  const row = el('div', { className: `tab ${tone}${active}${loading}`, attrs: { draggable: 'true', role: 'presentation', 'aria-label': `Tab: ${title}. Drag or use Cmd+Opt+Shift+arrows to reorder.` } })
   const main = el('button', {
     className: 'tab-main',
       type: 'button',
       title: tab.url || title,
       dataset: { tabId: tab.id },
-      attrs: { 'aria-label': `Switch to ${title}`, 'aria-busy': tab.loading ? 'true' : false },
+      attrs: {
+        role: 'tab',
+        id: `tab-btn-${tab.id}`,
+        'aria-selected': selected ? 'true' : 'false',
+        'aria-controls': 'newTabPage',
+        'aria-label': `Switch to ${title}`,
+        'aria-busy': tab.loading ? 'true' : false,
+        tabindex: selected ? '0' : '-1',
+      },
   }, [
     renderMonogram(tab),
     el('span', { className: 'tab-title', text: title }),
@@ -193,7 +258,6 @@ function entryWithFavicon(item) {
 
 function renderMonogram(tab, className = 'tab-monogram') {
   if (tab?.favicon_url) {
-    const fallbackUrl = tab.favicon_fallback || ''
     const img = el('img', {
       className: 'tab-favicon',
       attrs: {
@@ -202,13 +266,7 @@ function renderMonogram(tab, className = 'tab-monogram') {
         loading: 'lazy',
       },
     })
-    img.addEventListener('error', () => {
-      if (fallbackUrl && img.getAttribute('src') !== fallbackUrl) {
-        img.setAttribute('src', fallbackUrl)
-      } else {
-        hideBrokenFavicon(img)
-      }
-    })
+    img.addEventListener('error', () => hideBrokenFavicon(img))
     img.setAttribute('src', tab.favicon_url)
     const fallback = el('span', {
       className,

@@ -66,7 +66,7 @@ async function captureTheme(theme) {
     const newTabSearchStyle = getComputedStyle(document.querySelector('#newTabSearchInput'))
     const iconCenterDelta = Math.abs(((homeSearchIconRect?.top || 0) + (homeSearchIconRect?.height || 0) / 2) - ((homeSearchRect?.top || 0) + (homeSearchRect?.height || 0) / 2))
     const plusButtonPolished = Boolean(
-      newTabButtonRect && newTabButtonRect.width >= 32 && newTabButtonRect.height >= 32 && Number.parseFloat(newTabButtonStyle.borderRadius) >= 11
+      newTabButtonRect && newTabButtonRect.width >= 28 && newTabButtonRect.height >= 26 && Number.parseFloat(newTabButtonStyle.borderRadius) >= 7
     )
     const newTabInputBoxless = Boolean(
       newTabSearchStyle.outlineStyle === 'none' &&
@@ -74,8 +74,30 @@ async function captureTheme(theme) {
       newTabSearchStyle.boxShadow === 'none' &&
       ['rgba(0, 0, 0, 0)', 'transparent'].includes(newTabSearchStyle.backgroundColor)
     )
+    const giantBrandingRemoved = !document.querySelector('.home-orbit, .home-title')
+    const usefulStartSections = ['#continueTitle', '#openTitle', '#activityTitle']
+      .every(selector => Boolean(document.querySelector(selector)))
+    const continueRect = document.getElementById('continueTitle')?.getBoundingClientRect()
+    const openRect = document.getElementById('openTitle')?.getBoundingClientRect()
+    const activityRect = document.getElementById('activityTitle')?.getBoundingClientRect()
+    const searchRect = document.querySelector('.home-search')?.getBoundingClientRect()
+    const hierarchyCorrect = Boolean(
+      continueRect && openRect && activityRect && searchRect &&
+      continueRect.top >= searchRect.bottom &&
+      openRect.top >= searchRect.bottom &&
+      Math.abs(continueRect.top - openRect.top) <= 16 &&
+      activityRect.top >= Math.max(continueRect.bottom, openRect.bottom)
+    )
+    const shortcutLabels = [...document.querySelectorAll('.shortcut-tooltip')].map(node => node.textContent?.trim())
+    const builderDefaults = ['GitHub', 'MDN', 'localhost', 'docs.rs', 'npm', 'Stack Overflow'].every(label => shortcutLabels.includes(label))
+    const noGenericPortalDefaults = !['Google', 'Gmail', 'Gemini', 'ChatGPT'].some(label => shortcutLabels.includes(label))
+    const workflowLabels = /Continue Working|Open Something|Recent Activity|Local Browser State/i.test(document.body.textContent || '')
+    const workbenchResumeVisible = /Working On|Resume|Continue/i.test(document.body.textContent || '')
+    const projectCardsVisible = Boolean(document.querySelector('[data-project-id]')) && /Orbit Browser/i.test(document.body.textContent || '')
+    const implementationLabelsRemoved = !/Current Session|Local Sessions|Local History|Builder Favorites/i.test(document.body.textContent || '')
+    const localTrustSignal = /work history|sessions are ready|reopen Orbit/i.test(document.body.textContent || '')
     const newTabPillPolished = Boolean(
-      homeSearchRect && homeSearchRect.height >= 60 && Number.parseFloat(homeSearchStyle.borderRadius) >= 30 && newTabInputBoxless && iconCenterDelta <= 1 && Number.parseFloat(homeSearchIconStyle.borderRadius) >= 21 && plusButtonPolished
+      homeSearchRect && homeSearchRect.height >= 40 && homeSearchRect.height <= 48 && Number.parseFloat(homeSearchStyle.borderRadius) >= 7 && newTabInputBoxless && iconCenterDelta <= 1 && plusButtonPolished && giantBrandingRemoved && usefulStartSections && hierarchyCorrect && builderDefaults && noGenericPortalDefaults && localTrustSignal && workflowLabels && workbenchResumeVisible && projectCardsVisible && implementationLabelsRemoved
     )
     return {
       theme: document.documentElement.dataset.theme,
@@ -95,6 +117,16 @@ async function captureTheme(theme) {
       newTabPillRadius: Number.parseFloat(homeSearchStyle?.borderRadius || '0'),
       newTabIconCenterDelta: Number(iconCenterDelta.toFixed(2)),
       newTabIconRadius: Number.parseFloat(homeSearchIconStyle?.borderRadius || '0'),
+      giantBrandingRemoved,
+      usefulStartSections,
+      hierarchyCorrect,
+      builderDefaults,
+      noGenericPortalDefaults,
+      workflowLabels,
+      workbenchResumeVisible,
+      projectCardsVisible,
+      implementationLabelsRemoved,
+      localTrustSignal,
       plusButtonPolished,
       plusButtonSize: Number(newTabButtonRect?.width?.toFixed(1) || 0),
       plusButtonRadius: Number.parseFloat(newTabButtonStyle?.borderRadius || '0'),

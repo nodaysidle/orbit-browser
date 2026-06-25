@@ -1,0 +1,80 @@
+---
+description: "Android Jetpack Compose app conventions"
+globs: "**/*.kt,**/*.kts,**/AndroidManifest.xml,**/build.gradle,**/build.gradle.kts,gradle.properties"
+alwaysApply: false
+---
+
+# Android Compose App Rules
+
+Use these rules when building or modifying Android apps with Jetpack Compose.
+
+## Compose UI
+
+- Prefer stateless composables where possible.
+- Hoist state to the lowest stable owner that needs it.
+- Keep composables small and focused.
+- Do not perform blocking work in composables.
+- Do not create expensive objects repeatedly inside recomposition.
+- Use stable keys for lazy lists.
+- Provide empty, loading, success, and error states for real data flows.
+- Use Material components consistently unless a custom design system exists.
+
+## State and ViewModels
+
+- Use ViewModels for screen-level state.
+- Expose immutable UI state from ViewModels.
+- Use `StateFlow`/`Flow` for observable state.
+- Collect state using lifecycle-aware APIs.
+- Do not expose mutable state directly from ViewModels.
+- Keep business logic out of composables.
+- Keep repositories/data sources testable.
+
+## Dependency Management
+
+- If the app does not use Hilt/Koin/Dagger, use explicit factories or a small service locator.
+- Initialize shared dependencies before screens render.
+- Do not instantiate databases or repositories repeatedly in composables.
+- Avoid hidden global mutable state unless explicitly part of the app architecture.
+
+## Navigation
+
+- Keep route definitions centralized.
+- Avoid stringly-typed route duplication.
+- Validate navigation arguments.
+- Do not leave placeholder routes or dead screens.
+- Back behavior should match Android expectations.
+
+## Persistence
+
+- Use Room/DataStore/files according to the data type.
+- Do not fake persistence with local-only UI state.
+- Migrations must preserve user data.
+- Avoid destructive migrations without explicit approval.
+- Do not run database work on the main thread.
+
+## Permissions
+
+- Request permissions only when needed.
+- Explain permission purpose in-product before system prompts.
+- Handle denied and permanently denied states.
+- Do not assume permissions are granted.
+- Keep manifest permissions minimal.
+
+## Build and Release
+
+- Keep Gradle configuration consistent.
+- Do not mix incompatible Android Gradle Plugin, Kotlin, Compose Compiler, and SDK versions.
+- Do not commit generated build outputs or local signing secrets.
+- Verify debug builds with `assembleDebug`.
+- Verify release builds separately when release behavior matters.
+
+## Quality Gate
+
+Before considering Android work complete:
+
+- `./gradlew assembleDebug` passes.
+- Relevant unit tests pass if present.
+- App launches on device/emulator when runtime behavior changed.
+- Screens have real state, not hardcoded mock-only flows.
+- Permissions are minimal and handled.
+- No dead buttons, placeholder routes, or fake toggles remain in touched flows.

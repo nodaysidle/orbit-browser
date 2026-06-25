@@ -7,15 +7,15 @@ import { bindEvents } from '../../src/events.js'
 const IDS = [
   'btnMenu', 'menuDropdown', 'btnClose', 'btnMinimize', 'btnMaximize',
   'btnBack', 'btnForward', 'btnHome', 'btnReload', 'btnStop', 'btnNewTab',
-  'btnTheme', 'btnBookmark', 'menuHistory', 'menuBookmarks', 'menuSettings',
+  'btnTheme', 'btnBookmark', 'menuAbout', 'menuHistory', 'menuBookmarks', 'menuSettings',
   'menuClearHistory', 'closeHistory', 'closeBookmarks', 'tabsContainer',
-  'historyList', 'bookmarksList', 'recentPages', 'historySearch', 'addressInput',
+  'historyList', 'bookmarksList', 'recentPages', 'continueTabs', 'projectCards', 'recentSessions', 'historySearch', 'addressInput',
   'historyPanel', 'bookmarksPanel',
   'newTabSearchForm', 'shortcutsRow', 'aboutModal', 'aboutClose', 'settingsModal',
   'settingsClose', 'downloadModal', 'downloadConfirm', 'downloadCancel', 'downloadCancelIcon',
   'settingTheme', 'settingSearchEngine', 'settingStartup',
-  'saveShortcuts', 'errorRetry', 'errorHome', 'findInput', 'findNext',
-  'findPrev', 'findClose', 'findBar', 'toastRegion',
+  'saveShortcuts', 'addShortcut', 'shortcutEditor', 'errorRetry', 'errorHome', 'findInput', 'findNext',
+  'findPrev', 'findClose', 'findBar', 'findStatus', 'toastRegion', 'promptModal', 'promptInput', 'promptConfirm', 'promptCancel', 'promptCancelIcon',
 ]
 
 function setup() {
@@ -82,6 +82,10 @@ function actions(overrides = {}) {
     confirmDownload: () => calls.push('confirm-download'),
     cancelDownload: () => calls.push('cancel-download'),
     persistTabOrder: ids => calls.push(`persist-tabs:${ids.join(',')}`),
+    openProject: id => calls.push(`open-project:${id}`),
+    archiveProject: id => calls.push(`archive-project:${id}`),
+    saveCurrentWorkProject: () => calls.push('save-project'),
+    updateActiveProject: () => calls.push('update-project'),
     goHome: () => calls.push('home'),
     goBack: () => calls.push('back'),
     goForward: () => calls.push('forward'),
@@ -146,6 +150,27 @@ test('bindEvents delegates dynamic shortcut and recent page clicks', () => {
   nodes.recentPages.dispatchEvent({ type: 'click', target: recent })
 
   assert.deepEqual(bound.calls.slice(-2), ['navigate:https://example.com', 'navigate:https://rust-lang.org'])
+})
+
+test('bindEvents wires project resume/archive and save/update controls', () => {
+  const { document, nodes } = setup()
+  const bound = actions()
+  const project = document.createElement('button')
+  project.dataset.projectId = 'project-1'
+  const archive = document.createElement('span')
+  archive.dataset.projectArchiveId = 'project-1'
+  const save = document.createElement('button')
+  save.dataset.sessionAction = 'save-project'
+  const update = document.createElement('button')
+  update.dataset.sessionAction = 'update-project'
+
+  bindEvents(bound)
+  nodes.projectCards.dispatchEvent({ type: 'click', target: project })
+  nodes.projectCards.dispatchEvent({ type: 'click', target: archive, stopPropagation: () => bound.calls.push('stop') })
+  nodes.recentSessions.dispatchEvent({ type: 'click', target: save })
+  nodes.recentSessions.dispatchEvent({ type: 'click', target: update })
+
+  assert.deepEqual(bound.calls.slice(-5), ['open-project:project-1', 'stop', 'archive-project:project-1', 'save-project', 'update-project'])
 })
 
 test('bindEvents deletes shortcuts without wrapping the action in a thunk', () => {

@@ -36,6 +36,14 @@ fn save_current_session(app: &AppHandle, state: &BrowserState) {
         if let Err(err) = db.save_session(&tabs, active.as_deref()) {
             report_error(format_args!("failed to save session: {err}"));
         }
+        if let Err(err) = db.save_active_project_snapshot_from_settings(&tabs, active.as_deref()) {
+            report_error(format_args!(
+                "failed to save active project snapshot: {err}"
+            ));
+        }
+        if let Err(err) = db.save_detected_project(&tabs, active.as_deref()) {
+            report_error(format_args!("failed to save detected project: {err}"));
+        }
     });
 }
 
@@ -131,6 +139,38 @@ fn emit_tab_sync(app: &AppHandle, tab_id: &str) {
     if let Err(err) = app.emit("tab-loaded", &info) {
         report_error(format_args!("failed to emit tab sync: {err}"));
     }
+}
+
+fn is_likely_embedded_page_event(existing_url: &str, candidate_url: &str) -> bool {
+    let Ok(existing) = url::Url::parse(existing_url) else {
+        return false;
+    };
+    let Ok(candidate) = url::Url::parse(candidate_url) else {
+        return false;
+    };
+    let existing_host = existing.host_str().unwrap_or_default();
+    let candidate_host = candidate.host_str().unwrap_or_default();
+    if existing_host.is_empty() || candidate_host.is_empty() || existing_host == candidate_host {
+        return false;
+    }
+
+    let candidate_path = candidate.path();
+    (existing_host.ends_with("youtube.com")
+        && candidate_host == "accounts.youtube.com"
+        && candidate_path.contains("RotateCookiesPage"))
+        || (existing_host.contains("google.")
+            && candidate_host == "ogs.google.com"
+            && candidate_path.contains("/widget/"))
+}
+
+fn should_ignore_page_event(app: &AppHandle, tab_id: &str, candidate_url: &str) -> bool {
+    let browser_state = app.state::<BrowserState>();
+    let Ok(tabs) = lock_state(&browser_state.tabs, "tabs") else {
+        return false;
+    };
+    tabs.get(tab_id)
+        .map(|tab| is_likely_embedded_page_event(&tab.info.url, candidate_url))
+        .unwrap_or(false)
 }
 
 #[tauri::command]
@@ -233,6 +273,9 @@ async fn create_webview_for_tab(
                         return true;
                     }
                     let url_str = nav_url.to_string();
+                    if should_ignore_page_event(&app_nav, &id_nav, &url_str) {
+                        return true;
+                    }
                     {
                         let browser_state = app_nav.state::<BrowserState>();
                         let mut tabs = match lock_state(&browser_state.tabs, "tabs") {
@@ -341,9 +384,15 @@ async fn create_webview_for_tab(
                     );
                     NewWindowResponse::Deny
                 })
-                .on_page_load(move |_wv, payload| {
+                .on_page_load(move |wv_handle, payload| {
                     use tauri::webview::PageLoadEvent;
-                    let url_str = payload.url().to_string();
+                    let url_str = wv_handle
+                        .url()
+                        .map(|url| url.to_string())
+                        .unwrap_or_else(|_| payload.url().to_string());
+                    if should_ignore_page_event(&app_c, &id_c, &url_str) {
+                        return;
+                    }
                     let browser_state = app_c.state::<BrowserState>();
                     if !tab_exists(browser_state.inner(), &id_c) {
                         return;
@@ -836,20 +885,6 @@ pub async fn reset_zoom(app: AppHandle, tab_id: String) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-pub async fn set_reader_mode(app: AppHandle, tab_id: String, enabled: bool) -> Result<(), String> {
-    let webview = app
-        .get_webview(&tab_id)
-        .ok_or_else(|| format!("webview not found: {tab_id}"))?;
-    let script = if enabled {
-        reader_mode_enable_script()
-    } else {
-        reader_mode_disable_script()
-    };
-    webview.eval(&script).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
 fn clamp_zoom_level(value: f64) -> f64 {
     if !value.is_finite() {
         return DEFAULT_ZOOM_LEVEL;
@@ -862,58 +897,6 @@ fn zoom_script(zoom_level: f64) -> String {
     format!(
         "(() => {{ const orbitZoom = '{applied}'; document.documentElement.style.zoom = orbitZoom; if (document.body) document.body.style.zoom = orbitZoom; }})();"
     )
-}
-
-fn reader_mode_enable_script() -> String {
-    r#"(() => {
-  if (document.getElementById('orbit-reader-mode-root')) return;
-  const source = document.querySelector('article, main, [role="main"]') || document.body;
-  if (!source) return;
-  const clone = source.cloneNode(true);
-  clone.querySelectorAll('script, style, noscript, nav, header, footer, aside, form, button, iframe, [aria-hidden="true"]').forEach(node => node.remove());
-  const titleText = (document.querySelector('h1')?.textContent || document.title || 'Reader Mode').trim();
-  const style = document.createElement('style');
-  style.id = 'orbit-reader-mode-style';
-  style.textContent = `
-    body[data-orbit-reader="true"] { margin: 0 !important; background: #f7f0e3 !important; color: #221a13 !important; }
-    body[data-orbit-reader="true"] > :not(#orbit-reader-mode-root):not(#orbit-reader-mode-style) { display: none !important; }
-    #orbit-reader-mode-root { min-height: 100vh; box-sizing: border-box; padding: clamp(28px, 6vw, 72px) clamp(20px, 7vw, 96px); background: linear-gradient(180deg, #fbf6ec, #f2e7d4); color: #221a13; }
-    #orbit-reader-mode-shell { max-width: 760px; margin: 0 auto; }
-    #orbit-reader-mode-label { margin: 0 0 14px; color: #946326; font: 700 12px/1 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
-    #orbit-reader-mode-title { margin: 0 0 28px; color: #1d1510; font: 700 clamp(32px, 5vw, 56px)/1.05 Georgia, serif; letter-spacing: -.025em; }
-    #orbit-reader-mode-content { font: 18px/1.72 Georgia, 'Times New Roman', serif; }
-    #orbit-reader-mode-content :is(p, li, blockquote) { max-width: 72ch; }
-    #orbit-reader-mode-content :is(h1, h2, h3) { margin-top: 1.8em; color: #1d1510; font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.16; }
-    #orbit-reader-mode-content a { color: #75531f; text-decoration-thickness: .08em; text-underline-offset: .18em; }
-    #orbit-reader-mode-content img, #orbit-reader-mode-content video { max-width: 100%; height: auto; border-radius: 14px; }
-    #orbit-reader-mode-content pre { overflow: auto; padding: 14px; border-radius: 12px; background: #221a13; color: #f7f0e3; }
-    #orbit-reader-mode-content code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  `;
-  const root = document.createElement('div');
-  root.id = 'orbit-reader-mode-root';
-  const shell = document.createElement('main');
-  shell.id = 'orbit-reader-mode-shell';
-  const label = document.createElement('p');
-  label.id = 'orbit-reader-mode-label';
-  label.textContent = 'Orbit Reader Mode';
-  const title = document.createElement('h1');
-  title.id = 'orbit-reader-mode-title';
-  title.textContent = titleText;
-  const content = document.createElement('section');
-  content.id = 'orbit-reader-mode-content';
-  content.appendChild(clone);
-  shell.append(label, title, content);
-  root.appendChild(shell);
-  document.body.dataset.orbitReader = 'true';
-  document.head.appendChild(style);
-  document.body.appendChild(root);
-})();"#
-    .to_string()
-}
-
-fn reader_mode_disable_script() -> String {
-    "(() => { delete document.body.dataset.orbitReader; document.getElementById('orbit-reader-mode-root')?.remove(); document.getElementById('orbit-reader-mode-style')?.remove(); })();"
-        .to_string()
 }
 
 #[cfg(test)]
@@ -974,6 +957,26 @@ mod tests {
     }
 
     #[test]
+    fn test_embedded_page_events_do_not_replace_top_level_tab_url() {
+        assert!(is_likely_embedded_page_event(
+            "https://www.youtube.com/",
+            "https://accounts.youtube.com/RotateCookiesPage?origin=https%3A%2F%2Fwww.youtube.com"
+        ));
+        assert!(is_likely_embedded_page_event(
+            "https://www.google.com/",
+            "https://ogs.google.com/u/0/widget/app?origin=https%3A%2F%2Fwww.google.com"
+        ));
+        assert!(!is_likely_embedded_page_event(
+            "https://www.youtube.com/",
+            "https://www.youtube.com/watch?v=abc"
+        ));
+        assert!(!is_likely_embedded_page_event(
+            "https://example.com/",
+            "https://accounts.youtube.com/RotateCookiesPage"
+        ));
+    }
+
+    #[test]
     fn test_favicon_from_url_basic() {
         let result = favicon_from_url("https://example.com/page").unwrap();
         assert!(result.contains("example.com/favicon.ico"));
@@ -998,16 +1001,6 @@ mod tests {
         assert_eq!(clamp_zoom_level(1.05), 1.1);
         assert_eq!(clamp_zoom_level(99.0), MAX_ZOOM_LEVEL);
         assert_eq!(clamp_zoom_level(f64::NAN), DEFAULT_ZOOM_LEVEL);
-    }
-
-    #[test]
-    fn test_reader_mode_scripts_use_fixed_style_id() {
-        let enable = reader_mode_enable_script();
-        let disable = reader_mode_disable_script();
-        assert!(enable.contains("orbit-reader-mode-root"));
-        assert!(enable.contains("Orbit Reader Mode"));
-        assert!(enable.contains("article, main"));
-        assert!(disable.contains("orbit-reader-mode-style"));
     }
 
     #[test]
