@@ -22,10 +22,9 @@ This build is the current Orbit source and package line for NDI stress testing. 
 - **Settings/menu native overlay fixed** — the three-dot menu now reserves native WKWebView overlay space before revealing its dropdown, so Settings is visible and clickable above real page content.
 - **New-tab polish pass** — the search pill is now one coherent rounded command control with no inner native outline, and the `+` tab button has a stronger premium squircle treatment.
 - **Dark-by-default fixed** — first-run theme now matches the product claim instead of falling back to a mismatched saved/default state.
-- **Reader Mode upgraded** — replaced the weak CSS-only restyle with a reversible local extraction overlay that targets `article`, `main`, `[role="main"]`, or body fallback and strips noisy page chrome.
 - **Runtime tab reorder proof** — added keyboard active-tab reorder (`Cmd+Opt+Shift+←/→`) and runtime smoke evidence that persisted tab order survives through SQLite session state.
 - **Visual QA added** — new deterministic Playwright QA captures dark/light screenshots, checks overflow, proves visible keyboard focus, and records frame timing.
-- **Smoke coverage expanded** — built-app smoke now covers real navigation, domain blocking, session order, find, reader mode, zoom/reset, reload/stop, and download cancel/no-file behavior.
+- **Smoke coverage expanded** — built-app smoke covers real navigation, domain blocking, session order, find, zoom/reset, reload/stop, and download cancel/no-file behavior.
 - **Docs corrected** — test count and release notes now match the current source gates.
 
 ### Current verified quality gates
@@ -57,9 +56,7 @@ This release represents a major, design-driven improvement to Orbit's daily usab
 - Five additional high-value features:
   1. **Per-origin zoom memory** — Zoom levels now persist per site
   2. **Smart clean link copying** — Automatically strips common tracking parameters (`utm_*`, `fbclid`, `gclid`, etc.)
-  3. **Local-only Reader Mode** — Toggle with `Cmd+Shift+R` for a clean, comfortable reading experience
-  4. **Improved find-in-page** — Better feedback and structure
-  5. **Tab hibernation foundation** + supporting infrastructure (`eval_on_tab` command)
+  3. **Improved find-in-page** — Better feedback and structure
 - Multiple verified clean production builds with the app installed to `/Applications/Orbit.app` (previous versions removed before each final install)
 
 All changes were developed with repeated `npm run check` validation (31 JS tests + 69 Rust tests + clippy + production Vite build) and respect the 9.7/10 quality bar.
@@ -68,7 +65,6 @@ All changes were developed with repeated `npm run check` validation (31 JS tests
 
 | Key            | Action                    |
 |----------------|---------------------------|
-| `Cmd+Shift+R`  | Toggle Reader Mode        |
 | `Cmd+=` / `-`  | Zoom in / out (now persists per origin) |
 | `Cmd+Opt+Shift+←/→` | Move active tab left / right |
 | Copy button    | Copies clean link (tracking stripped) |
@@ -200,7 +196,6 @@ Runs:
 | `Cmd+Shift+[` / `Cmd+Shift+]` | Previous / Next tab |
 | `Cmd+1` … `Cmd+9` | Switch to tab by index |
 | `Cmd+F` | Find in page |
-| `Cmd+Shift+R` | Toggle Reader Mode |
 
 ---
 
